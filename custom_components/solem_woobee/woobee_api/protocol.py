@@ -8,16 +8,19 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from contextlib import asynccontextmanager
+from functools import wraps
+
+from .transport import BLETransport
+
+from .errors import (AuthenticationError, ConnectivityError, InvalidResponseError,
+                     SessionTimeoutError, WooBeeError)
 from datetime import datetime
 from uuid import UUID
 
 # `BleManager.isAlreadyAuthenticatedLiteral()` compares this exact byte sequence.
 AUTHENTICATED = {b"AUTHENTICATED\x00"}
 SOLEM_STANDARD_KEY = "6D680000B74F429C81D47E10E7408105"
-
-
-class AuthenticationError(RuntimeError):
-    pass
 
 
 @dataclass(frozen=True)
@@ -75,46 +78,190 @@ def ctr_crypt(payload: bytes, key: bytes, nonce: bytes) -> bytes:
 
 
 class SolemSession:
-    """One MySOLEM-compatible authenticated GATT session."""
+    """One authenticated connection. Borrowed connections are never disconnected.
 
-    def __init__(self, client: object, gatt: SolemGatt) -> None:
+    After any interrupted exchange close and reconnect: V6 has no transaction ID
+    with which to distinguish a late reply. No commands are retried.
+    """
+
+    def __init__(self, client: BLETransport, gatt: SolemGatt, *, owns_connection: bool = False) -> None:
         self._client = client
         self._gatt = gatt
-        self._notifications: asyncio.Queue[bytes] = asyncio.Queue()
+        self._owns_connection = owns_connection
+        self._notifications: asyncio.Queue[bytes] = asyncio.Queue(maxsize=128)
         self._authenticated: asyncio.Future[None] | None = None
         self._nonce: bytes | None = None
+        self._lock = asyncio.Lock()
+        self._owner = None
+        self._subscriptions: list[str] = []
+        self._broken = False
+        self._closed = False
+        self._overflow = False
+
+    @asynccontextmanager
+    async def transaction(self):
+        """Serialize a complete operation, including all of its requests."""
+        task = asyncio.current_task()
+        if self._owner is task:
+            yield
+            return
+        async with self._lock:
+            self._owner = task
+            try:
+                yield
+            finally:
+                self._owner = None
+
+    async def __aenter__(self):
+        try:
+            if self._owns_connection:
+                async with asyncio.timeout(10):
+                    await self._client.connect()
+            await self.authenticate()
+            return self
+        except BaseException as exc:
+            try:
+                await self.aclose()
+            except ConnectivityError:
+                pass
+            if isinstance(exc, TimeoutError):
+                raise SessionTimeoutError("BLE connect deadline exceeded") from exc
+            if isinstance(exc, (asyncio.CancelledError, WooBeeError)):
+                raise
+            raise ConnectivityError("BLE connection failed") from exc
+
+    async def __aexit__(self, exc_type, exc, tb):
+        try:
+            await self.aclose()
+        except ConnectivityError:
+            if exc is None:
+                raise
 
     def _on_auth(self, _characteristic: object, value: bytearray) -> None:
+        # Only the exact recovered success literal is known. Other notifications
+        # are not evidence of credential rejection; let the auth deadline expire.
         if bytes(value) in AUTHENTICATED and self._authenticated and not self._authenticated.done():
             self._authenticated.set_result(None)
 
     def _on_response(self, _characteristic: object, value: bytearray) -> None:
-        self._notifications.put_nowait(bytes(value))
+        if self._closed or self._broken:
+            return
+        try:
+            self._notifications.put_nowait(bytes(value))
+        except asyncio.QueueFull:
+            self._overflow = True
+
+    async def aclose(self) -> None:
+        """Remove callbacks, clear key material and release an owned connection."""
+        async with self.transaction():
+            if self._closed:
+                return
+            self._closed = True
+            self._nonce = None
+            if self._authenticated and not self._authenticated.done():
+                self._authenticated.cancel()
+            error = None
+            for uuid in reversed(self._subscriptions):
+                try:
+                    async with asyncio.timeout(5):
+                        await self._client.stop_notify(uuid)
+                except Exception as exc:
+                    error = exc
+            self._subscriptions.clear()
+            while not self._notifications.empty():
+                self._notifications.get_nowait()
+            if self._owns_connection:
+                try:
+                    async with asyncio.timeout(5):
+                        await self._client.disconnect()
+                except Exception as exc:
+                    error = exc
+            if error:
+                raise ConnectivityError("BLE session cleanup failed") from error
 
     async def authenticate(self, timeout: float = 10.0) -> None:
-        """Read challenge, write AES response, wait MySOLEM auth acknowledgement."""
-        loop = asyncio.get_running_loop()
-        self._authenticated = loop.create_future()
-        await self._client.start_notify(self._gatt.auth_uuid, self._on_auth)
-        await self._client.start_notify(self._gatt.response_uuid, self._on_response)
-        self._nonce = bytes(await self._client.read_gatt_char(self._gatt.auth_uuid))
-        response = ecb_encrypt(self._nonce, self._gatt.key)
-        await self._client.write_gatt_char(self._gatt.auth_uuid, response, response=True)
-        try:
-            await asyncio.wait_for(self._authenticated, timeout)
-        except TimeoutError as exc:
-            raise AuthenticationError("SOLEM controller did not authenticate") from exc
+        """Fresh challenge per connection; no cloud token or inferred expiry."""
+        async with self.transaction():
+            if self._broken or self._closed:
+                raise ConnectivityError("create a new session on a fresh connection")
+            if self._nonce is not None:
+                return
+            try:
+                async with asyncio.timeout(timeout):
+                    self._authenticated = asyncio.get_running_loop().create_future()
+                    for uuid, callback in ((self._gatt.auth_uuid, self._on_auth),
+                                           (self._gatt.response_uuid, self._on_response)):
+                        await self._client.start_notify(uuid, callback)
+                        self._subscriptions.append(uuid)
+                    nonce = bytes(await self._client.read_gatt_char(self._gatt.auth_uuid))
+                    if len(nonce) != 16:
+                        raise InvalidResponseError("expected a 16-byte authentication challenge")
+                    response = ecb_encrypt(nonce, self._gatt.key)
+                    await self._client.write_gatt_char(self._gatt.auth_uuid, response, response=True)
+                    await self._authenticated
+                    self._nonce = nonce
+            except BaseException as exc:
+                self._broken = True
+                try:
+                    await self.aclose()
+                except ConnectivityError:
+                    pass
+                if isinstance(exc, TimeoutError):
+                    raise SessionTimeoutError("authentication deadline exceeded") from exc
+                if isinstance(exc, (asyncio.CancelledError, WooBeeError)):
+                    raise
+                raise ConnectivityError("BLE authentication transport failed") from exc
+
+    async def _receive(self) -> bytes:
+        encrypted = await self._notifications.get()
+        if self._overflow or not encrypted:
+            raise InvalidResponseError("empty response or notification overflow")
+        return ctr_crypt(encrypted, self._gatt.key, self._nonce)
+
+    async def _exchange(self, frame: bytes, timeout: float, all_replies: bool):
+        async with self.transaction():
+            if self._closed or self._broken:
+                raise ConnectivityError("create a new session on a fresh connection")
+            if self._nonce is None:
+                raise AuthenticationError("authenticate before exchanging frames")
+            try:
+                async with asyncio.timeout(timeout):
+                    if not self._notifications.empty():
+                        raise InvalidResponseError("unsolicited response before request")
+                    await self._client.write_gatt_char(
+                        self._gatt.request_uuid,
+                        ctr_crypt(frame, self._gatt.key, self._nonce), response=False
+                    )
+                    expected = {0x31: 0x3C}.get(frame[0], (frame[0] + 1) & 0xFF)
+                    replies = [await self._receive()]
+                    if replies[0][0] != expected:
+                        raise InvalidResponseError("unexpected response command")
+                    while all_replies and not self._is_last_new_generation_reply(replies[-1]):
+                        if len(replies) >= 128:
+                            raise InvalidResponseError("too many V6 response pages")
+                        reply = await self._receive()
+                        if reply[0] != expected:
+                            raise InvalidResponseError("unexpected response command")
+                        replies.append(reply)
+                    return replies
+            except BaseException as exc:
+                self._broken = True
+                self._nonce = None
+                try:
+                    await self.aclose()
+                except ConnectivityError:
+                    pass
+                if isinstance(exc, TimeoutError):
+                    raise SessionTimeoutError("BLE exchange deadline exceeded; outcome unknown") from exc
+                if isinstance(exc, (asyncio.CancelledError, WooBeeError)):
+                    raise
+                raise ConnectivityError("BLE exchange failed; outcome unknown") from exc
 
     async def exchange(self, frame: bytes, timeout: float = 20.0) -> bytes:
-        """Send one recovered controller frame; return one decrypted notification."""
-        if self._nonce is None:
-            raise AuthenticationError("authenticate before exchanging frames")
-        await self._client.write_gatt_char(
-            # BleManager.doWriteCharacteristic(): Android WRITE_TYPE_NO_RESPONSE (1).
-            self._gatt.request_uuid, ctr_crypt(frame, self._gatt.key, self._nonce), response=False
-        )
-        encrypted = await asyncio.wait_for(self._notifications.get(), timeout)
-        return ctr_crypt(encrypted, self._gatt.key, self._nonce)
+        return (await self._exchange(frame, timeout, False))[0]
+
+    async def exchange_all(self, frame: bytes, timeout: float = 20.0) -> list[bytes]:
+        return await self._exchange(frame, timeout, True)
 
     @staticmethod
     def _is_last_new_generation_reply(reply: bytes) -> bool:
@@ -132,14 +279,6 @@ class SolemSession:
             and (len(reply) <= 3 or reply[3] != 0xF0 or (len(reply) > 4 and reply[4] != 0xF0))
         )
 
-    async def exchange_all(self, frame: bytes, timeout: float = 20.0) -> list[bytes]:
-        """Send frame and collect all its V6 replies, as MySOLEM does."""
-        first = await self.exchange(frame, timeout)
-        replies = [first]
-        while not self._is_last_new_generation_reply(replies[-1]):
-            encrypted = await asyncio.wait_for(self._notifications.get(), timeout)
-            replies.append(ctr_crypt(encrypted, self._gatt.key, self._nonce))
-        return replies
 
 
 # Observed on user-owned WooBee V2 WB-4 firmware 7.0.2.
@@ -147,6 +286,16 @@ WOOBEE_V2_GATT = SolemGatt(
     pattern="A98C000%d-53E4-441C-96AF-B318E57E3B91",
     key_hex=SOLEM_STANDARD_KEY,
 )
+
+
+def serialized(method):
+    @wraps(method)
+    async def wrapped(self, *args, **kwargs):
+        if isinstance(self._session, SolemSession):
+            async with self._session.transaction():
+                return await method(self, *args, **kwargs)
+        return await method(self, *args, **kwargs)
+    return wrapped
 
 
 class WooBeeV2:
@@ -160,6 +309,10 @@ class WooBeeV2:
     def __init__(self, session: SolemSession) -> None:
         self._session = session
 
+    async def aclose(self) -> None:
+        await self._session.aclose()
+
+    @serialized
     async def authenticate(self) -> None:
         await self._session.authenticate()
 
@@ -219,20 +372,23 @@ class WooBeeV2:
         """APK `resetValveStatusV5()`; clears latched valve fault bits."""
         return b"\x19\x03\x01\x7f\xff"
 
+    @serialized
     async def read_state(self) -> "WooBeeState":
         """Return readable WB-4 state, parsed from MySOLEM Java logic."""
         from .responses import parse_state
 
         return parse_state(await self.read_state_raw())
 
+    @serialized
     async def read_device_info(self) -> "WooBeeDeviceInfo":
         """Read name, serial, hardware, firmware and controller UUID."""
         from .responses import parse_device_info
 
         identity = await self._session.exchange_all(b"\x0f\x00")
-        uuid = await self._session.exchange_all(b"\xe3\x00")
+        uuid = [await self._session.exchange(b"\xe3\x00")]
         return parse_device_info(identity, uuid)
 
+    @serialized
     async def read_state_raw(self) -> dict[str, list[bytes]]:
         """APK: type 180 `readState()` sequence; decrypted replies without parsing."""
         return {
@@ -241,64 +397,78 @@ class WooBeeV2:
             "input_alerts": await self._session.exchange_all(b"\x71\x00"),
         }
 
+    @serialized
     async def _command_status(self, frame: bytes) -> "WooBeeStatus":
         # `manageAnswer()`: CMD_MANUAL_V5 → statusAnswerV5().
         from .responses import parse_status
 
         return parse_status(await self._session.exchange_all(frame))
 
+    @serialized
     async def start_valve(self, zone: int, minutes: int) -> "WooBeeStatus":
         return await self._command_status(self.start_valve_frame(zone, minutes))
 
+    @serialized
     async def stop(self) -> "WooBeeStatus":
         return await self._command_status(self.stop_frame())
 
+    @serialized
     async def start_all(self, minutes: int) -> "WooBeeStatus":
         return await self._command_status(self.start_all_frame(minutes))
 
+    @serialized
     async def start_program(self, program: int) -> "WooBeeStatus":
         return await self._command_status(self.start_program_frame(program))
 
+    @serialized
     async def sync_clock(self, when: datetime | None = None) -> list[bytes]:
         """Set controller clock to local current time or supplied calendar time."""
         return await self._session.exchange_all(self.set_clock_frame(when or datetime.now().astimezone()))
 
+    @serialized
     async def reset_valve_faults(self) -> "WooBeeValveFaults":
         """Clear latched valve fault bits and return controller acknowledgement."""
         from .responses import parse_valve_faults
 
         return parse_valve_faults((await self._session.exchange_all(self.reset_valve_faults_frame()))[-1])
 
+    @serialized
     async def read_programs_raw(self) -> list[bytes]:
         """APK `readConfigV5()`: request all irrigation-program frames, unparsed."""
         return await self._session.exchange_all(b"\x39\x00")
 
+    @serialized
     async def read_programs(self) -> tuple["IrrigationProgram", ...]:
         """Read and parse programs using MySOLEM `readConfigAnswerV5()` layout."""
         from .programs import parse_program_replies
 
         return parse_program_replies(await self.read_programs_raw())
 
+    @serialized
     async def read_schedules(self) -> tuple["Schedule", ...]:
         from .programs import Schedule
 
         return tuple(Schedule.from_program(program) for program in await self.read_programs())
 
+    @serialized
     async def backup(self) -> "ControllerBackup":
         """Read all schedule data into portable client backup."""
         from .programs import ControllerBackup
 
         return ControllerBackup(await self.read_schedules())
 
+    @serialized
     async def write_program(self, program: "IrrigationProgram") -> list[list[bytes]]:
         """Persist one schedule using MySOLEM `configIrriV5()` frame sequence."""
         from .programs import build_program_frames
 
         return [await self._session.exchange_all(frame) for frame in build_program_frames(program)]
 
+    @serialized
     async def write_schedule(self, schedule: "Schedule") -> list[list[bytes]]:
         return await self.write_program(schedule.to_program())
 
+    @serialized
     async def restore(self, backup: "ControllerBackup") -> list[list[list[bytes]]]:
         """Persist every schedule from a client backup, in schedule order."""
         return [await self.write_schedule(schedule) for schedule in backup.schedules]

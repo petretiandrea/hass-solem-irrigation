@@ -8,7 +8,7 @@ import asyncio
 
 from bleak import BleakClient
 
-from solem_woobee import SolemSession, WOOBEE_V2_GATT
+from custom_components.solem_woobee.woobee_api import SolemSession, WOOBEE_V2_GATT
 
 
 async def main() -> None:
@@ -18,8 +18,8 @@ async def main() -> None:
 
     print(f"Authenticating {args.address}; no valve frame is sent.")
     async with BleakClient(args.address) as client:
-        session = SolemSession(client, WOOBEE_V2_GATT)
-        await session.authenticate()
+        async with SolemSession(client, WOOBEE_V2_GATT):
+            pass
     print("Authenticated successfully.")
 
 

@@ -36,7 +36,7 @@ hardware evidence.
 
 ```bash
 .venv/bin/python -m unittest discover -s tests -v
-.venv/bin/python -m compileall -q solem_woobee scripts tests
+.venv/bin/python -m compileall -q custom_components scripts tests
 ```
 
 Run hardware commands manually after tests. BLE timeouts can invalidate macOS

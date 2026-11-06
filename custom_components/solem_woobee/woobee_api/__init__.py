@@ -51,3 +51,10 @@ __all__ = [
     "parse_program_replies",
 ]
 
+
+from .client import WooBeeConnection
+from .errors import WooBeeError, ConnectivityError, SessionTimeoutError, InvalidResponseError
+from .models import ControllerIdentity, ZoneIdentity, normalize_address
+
+__all__ += ["WooBeeConnection", "WooBeeError", "ConnectivityError", "SessionTimeoutError",
+            "InvalidResponseError", "ControllerIdentity", "ZoneIdentity", "normalize_address"]

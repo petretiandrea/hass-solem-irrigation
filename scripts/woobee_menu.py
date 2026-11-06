@@ -11,12 +11,13 @@ import sys
 from bleak import BleakClient
 from bleak.exc import BleakError
 
-from solem_woobee import (
+from custom_components.solem_woobee.woobee_api import (
     ControllerBackup,
     Days,
     ProgramCycle,
     Schedule,
     SolemSession,
+    ConnectivityError,
     TimeOfDay,
     WOOBEE_V2_GATT,
     WooBeeV2,
@@ -122,7 +123,7 @@ def print_status(status: object) -> None:
 
 
 def is_transport_failure(error: Exception) -> bool:
-    return isinstance(error, (BleakError, TimeoutError))
+    return isinstance(error, (BleakError, TimeoutError, ConnectivityError))
 
 
 async def macos_rssi(client: BleakClient) -> int:
@@ -215,6 +216,8 @@ async def menu(address: str) -> None:
                 if not is_transport_failure(exc):
                     continue
                 print("Connessione BLE persa. Riconnessione...")
+                with suppress(ConnectivityError):
+                    await woobee.aclose()
                 with suppress(BleakError):
                     await client.disconnect()
                 try:
@@ -224,6 +227,8 @@ async def menu(address: str) -> None:
                     return
                 print("Riconnesso.")
     finally:
+        with suppress(ConnectivityError):
+            await woobee.aclose()
         with suppress(BleakError):
             await client.disconnect()
 

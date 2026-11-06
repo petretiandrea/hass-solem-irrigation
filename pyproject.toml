@@ -5,10 +5,13 @@ build-backend = "hatchling.build"
 [project]
 name = "solem-woobee"
 version = "0.1.0"
-description = "Read-only BLE discovery for SOLEM WooBee controllers"
-requires-python = ">=3.10"
+description = "Embedded asynchronous BLE client for SOLEM WooBee controllers"
+requires-python = ">=3.11"
 dependencies = ["bleak>=0.22", "cryptography>=42"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+
+[tool.hatch.build.targets.wheel]
+packages = ["custom_components"]

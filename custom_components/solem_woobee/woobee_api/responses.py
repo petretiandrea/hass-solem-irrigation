@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from .errors import InvalidResponseError
 
 
 def _u24(high: int, middle: int, low: int) -> int:
@@ -23,7 +24,7 @@ class WooBeeStatus:
     active_program: int
     active_zone: int | None
     remaining_seconds: int | None
-    zone_remaining_seconds: tuple[int, int, int, int]
+    zone_remaining_seconds: tuple[int | None, int | None, int | None, int | None]
     raw_pages: tuple[bytes, ...]
 
 
@@ -74,7 +75,10 @@ def parse_device_info(identity_replies: list[bytes] | tuple[bytes, ...], uuid_re
         if len(reply) < 3 or reply[0] != 0x10:
             continue
         if reply[2] == 0:
-            name = reply[3:18].split(b"\0", 1)[0].decode("utf-8")
+            try:
+                name = reply[3:18].split(b"\0", 1)[0].decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise InvalidResponseError("invalid device name encoding") from exc
         elif reply[2] == 1 and len(reply) >= 17:
             address = reply[3:9].hex().upper()
             bluetooth_address = address
@@ -85,6 +89,8 @@ def parse_device_info(identity_replies: list[bytes] | tuple[bytes, ...], uuid_re
     for reply in uuid_replies:
         if len(reply) >= 2 and reply[0] == 0xE4:
             uuid = reply[2:].hex().upper()
+    if name is None and bluetooth_address is None:
+        raise InvalidResponseError("missing device identification")
     return WooBeeDeviceInfo(
         name=name,
         bluetooth_address=bluetooth_address,
@@ -102,7 +108,7 @@ def parse_status(replies: list[bytes] | tuple[bytes, ...]) -> WooBeeStatus:
     pages = {reply[2]: reply for reply in replies if len(reply) >= 3 and reply[0] == 0x3C}
     general = pages.get(2)
     if general is None or len(general) < 18:
-        raise ValueError("missing or truncated WooBee V2 status page 2")
+        raise InvalidResponseError("missing or truncated WooBee V2 status page 2")
 
     zone_seconds: list[int | None] = [None] * 12
     for page, first_zone, offset, count in ((2, 1, 12, 2), (1, 3, 3, 5), (0, 8, 3, 5)):
@@ -127,7 +133,7 @@ def parse_status(replies: list[bytes] | tuple[bytes, ...]) -> WooBeeStatus:
         active_program=general[8],
         active_zone=active_zone,
         remaining_seconds=zone_seconds[active_zone - 1] if active_zone else None,
-        zone_remaining_seconds=tuple((value or 0) for value in zone_seconds[:4]),
+        zone_remaining_seconds=tuple(zone_seconds[:4]),
         raw_pages=tuple(replies),
     )
 
@@ -135,7 +141,7 @@ def parse_status(replies: list[bytes] | tuple[bytes, ...]) -> WooBeeStatus:
 def parse_valve_faults(reply: bytes) -> WooBeeValveFaults:
     """Parse one V6 response to `readValveStatusV5()` / command 0x19."""
     if len(reply) < 5 or reply[0] != 0x1A:
-        raise ValueError("invalid WooBee valve-status response")
+        raise InvalidResponseError("invalid WooBee valve-status response")
     zones_1_to_8, zones_9_to_16 = reply[4], reply[3]
     faults = tuple(
         zone
@@ -147,9 +153,13 @@ def parse_valve_faults(reply: bytes) -> WooBeeValveFaults:
 
 def parse_state(raw: dict[str, list[bytes]]) -> WooBeeState:
     """Turn `WooBeeV2.read_state_raw()` data into MySOLEM-equivalent fields."""
+    if not all(key in raw for key in ("status", "valve_status", "input_alerts")):
+        raise InvalidResponseError("missing state response group")
+    if not raw["input_alerts"] or any(not r or r[0] != 0x72 for r in raw["input_alerts"]):
+        raise InvalidResponseError("invalid input alerts response")
     valve_replies = raw["valve_status"]
     if not valve_replies:
-        raise ValueError("missing WooBee valve-status response")
+        raise InvalidResponseError("missing WooBee valve-status response")
     return WooBeeState(
         status=parse_status(raw["status"]),
         valve_faults=parse_valve_faults(valve_replies[-1]),

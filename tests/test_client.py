@@ -1,9 +1,9 @@
 import unittest
 from datetime import date, datetime
 
-from solem_woobee import ControllerBackup, SolemGatt, SolemSession, WOOBEE_V2_GATT, WooBeeClient, WooBeeV2
-from solem_woobee.protocol import ctr_crypt
-from solem_woobee.programs import (
+from custom_components.solem_woobee.woobee_api import ControllerBackup, SolemGatt, SolemSession, WOOBEE_V2_GATT, WooBeeClient, WooBeeV2
+from custom_components.solem_woobee.woobee_api.protocol import ctr_crypt
+from custom_components.solem_woobee.woobee_api.programs import (
     Days,
     IrrigationProgram,
     ProgramCycle,
@@ -14,7 +14,7 @@ from solem_woobee.programs import (
     build_program_frames,
     parse_program_replies,
 )
-from solem_woobee.responses import parse_device_info, parse_state
+from custom_components.solem_woobee.woobee_api.responses import parse_device_info, parse_state
 
 
 class Characteristic:
@@ -107,7 +107,11 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         session = SolemSession(client, WOOBEE_V2_GATT)
         session._nonce = bytes(range(16))
         reply = b"\x3c\x00\x02"
-        session._notifications.put_nowait(ctr_crypt(reply, WOOBEE_V2_GATT.key, session._nonce))
+        original_write = client.write_gatt_char
+        async def write(*args, **kwargs):
+            await original_write(*args, **kwargs)
+            session._on_response(None, bytearray(ctr_crypt(reply, WOOBEE_V2_GATT.key, session._nonce)))
+        client.write_gatt_char = write
 
         self.assertEqual(reply, await session.exchange(b"\x3b\x00"))
         uuid, payload, response = client.writes[0]

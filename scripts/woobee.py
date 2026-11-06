@@ -7,7 +7,7 @@ import asyncio
 
 from bleak import BleakClient
 
-from solem_woobee import SolemSession, WOOBEE_V2_GATT, WooBeeV2
+from custom_components.solem_woobee.woobee_api import WooBeeConnection
 
 
 def print_status(status: object) -> None:
@@ -34,9 +34,7 @@ async def main() -> None:
     program.add_argument("program", type=int)
     args = parser.parse_args()
 
-    async with BleakClient(args.address) as client:
-        woobee = WooBeeV2(SolemSession(client, WOOBEE_V2_GATT))
-        await woobee.authenticate()
+    async with WooBeeConnection(args.address, BleakClient) as woobee:
         if args.command == "status":
             state = await woobee.read_state()
             print_status(state.status)
