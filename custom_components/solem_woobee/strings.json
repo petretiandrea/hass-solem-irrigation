@@ -1,0 +1,23 @@
+{
+  "title": "SOLEM WooBee",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect a WooBee controller",
+        "description": "Select a WooBee V2 / WB-4 visible to Home Assistant Bluetooth. Authentication and a read of identity and state will be performed. No password is required.",
+        "data": {
+          "address": "Bluetooth controller"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "The controller rejected authentication.",
+      "cannot_connect": "Unable to connect. Check Bluetooth range and available connections, then retry.",
+      "invalid_response": "The controller returned an unsupported or invalid response."
+    },
+    "abort": {
+      "already_configured": "This controller is already configured.",
+      "no_devices_found": "No connectable Bluetooth devices found. Bring the controller within range and retry."
+    }
+  }
+}

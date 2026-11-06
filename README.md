@@ -203,3 +203,27 @@ Tests use synthetic BLE transports and anonymous response fixtures. No credentia
 or controller-specific secrets are required. Hardware behavior, battery scale,
 polling cadence and Bluetooth proxy behavior still need device validation; tests
 never connect to hardware or actuate valves.
+
+## Home Assistant configuration
+
+The integration domain is `solem_woobee` (Home Assistant 2026.8.0+, Python
+3.14). Copy `custom_components/solem_woobee` to the HA configuration directory,
+restart, and add **SOLEM WooBee** from Devices & services. Select the WooBee V2 /
+WB-4 visible to Home Assistant Bluetooth. Automatic discovery is deferred until
+an advertisement matcher is verified; unrelated Bluetooth devices can appear
+in the selector and will fail protocol validation.
+
+Setup authenticates and reads identity and state, without changing irrigation.
+The BLE challenge uses the protocol's built-in key: no account, password or
+credential reauthentication is available. Timeouts indicate connectivity
+failure, not confirmed credential rejection. Each normalized BLE address can
+be configured once. Connections and notifications are released after each
+validation; unavailable controllers retry setup through Home Assistant.
+
+This initial skeleton does not expose entities or start background polling;
+those are implemented in SBR-92 and SBR-93. The client is embedded, not fetched
+from PyPI, and shares the integration version in `manifest.json`.
+
+Integration tests: install `requirements_test.txt` and run
+`python -m pytest tests/integration -q`. The existing client tests continue to
+run with `python -m unittest discover -s tests -v`, without Home Assistant.
