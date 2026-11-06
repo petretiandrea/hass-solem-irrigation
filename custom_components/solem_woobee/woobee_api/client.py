@@ -1,13 +1,10 @@
-"""Read-only BLE reconnaissance for WooBee V2 controllers.
-
-shortcut: WooBee command frames are unknown; add writes after an HCI capture maps
-the exact firmware's service, characteristic, framing, acknowledgement and commit.
-"""
+"""Read-only GATT inspection and managed WooBee connection scopes."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol
+from .transport import BLETransport
 
 
 class Scanner(Protocol):
@@ -15,7 +12,7 @@ class Scanner(Protocol):
 
 
 class ClientFactory(Protocol):
-    def __call__(self, address: str) -> object: ...
+    def __call__(self, address: str) -> BLETransport: ...
 
 
 @dataclass(frozen=True)
@@ -88,3 +85,33 @@ class WooBeeClient:
                 services=tuple(result),
             )
 
+
+
+class WooBeeConnection:
+    """Factory-backed connection scope; owns only the client it creates.
+
+    Pass an address-bound async BLE factory (e.g. an HA Bluetooth connector
+    adapter). Connect/disconnect and authentication are managed by this scope.
+    A new scope always means a fresh challenge; commands are never replayed.
+    """
+
+    def __init__(self, address: str, client_factory: ClientFactory) -> None:
+        from .models import ControllerIdentity
+
+        self.identity = ControllerIdentity(address)
+        self._factory = client_factory
+        self._address = address
+        self._session = None
+
+    async def __aenter__(self):
+        from .protocol import SolemSession, WOOBEE_V2_GATT, WooBeeV2
+
+        if self._session is not None:
+            raise RuntimeError("connection scope cannot be reused")
+        self._session = SolemSession(self._factory(self._address), WOOBEE_V2_GATT,
+                                     owns_connection=True)
+        await self._session.__aenter__()
+        return WooBeeV2(self._session)
+
+    async def __aexit__(self, *args):
+        await self._session.__aexit__(*args)

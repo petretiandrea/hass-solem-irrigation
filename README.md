@@ -9,7 +9,7 @@ python scripts/inspect_woobee.py
 
 ```python
 import asyncio
-from solem_woobee import WooBeeClient
+from custom_components.solem_woobee.woobee_api import WooBeeClient
 
 async def main():
     client = WooBeeClient.local()
@@ -32,12 +32,12 @@ and response payloads use AES-CTR with that challenge as nonce.
 
 ```python
 from bleak import BleakClient
-from solem_woobee import SolemSession, WOOBEE_V2_GATT
+from custom_components.solem_woobee.woobee_api import SolemSession, WOOBEE_V2_GATT
 
 async with BleakClient("AA:BB:CC:DD:EE:FF") as client:
-    session = SolemSession(client, WOOBEE_V2_GATT)
-    await session.authenticate()
-    # MySOLEM command frames: use WooBeeV2(session), below.
+    async with SolemSession(client, WOOBEE_V2_GATT) as session:
+        # MySOLEM command frames: use WooBeeV2(session), below.
+        pass
 ```
 
 Static APK reverse engineering maps WooBee V2 firmware 7.0.2 to `type 180`,
@@ -64,15 +64,15 @@ valve fault zones. `read_state_raw()` retains decrypted frames.
 Run:
 
 ```bash
-.venv/bin/python scripts/woobee.py EF892F67-45E5-D6DB-633D-6DF1C5AFA7B5 status
-.venv/bin/python scripts/woobee.py EF892F67-45E5-D6DB-633D-6DF1C5AFA7B5 start 1 1
-.venv/bin/python scripts/woobee.py EF892F67-45E5-D6DB-633D-6DF1C5AFA7B5 stop
+.venv/bin/python scripts/woobee.py 00000000-0000-0000-0000-000000000001 status
+.venv/bin/python scripts/woobee.py 00000000-0000-0000-0000-000000000001 start 1 1
+.venv/bin/python scripts/woobee.py 00000000-0000-0000-0000-000000000001 stop
 ```
 
 Menu interattivo:
 
 ```bash
-.venv/bin/python scripts/woobee_menu.py EF892F67-45E5-D6DB-633D-6DF1C5AFA7B5
+.venv/bin/python scripts/woobee_menu.py 00000000-0000-0000-0000-000000000001
 ```
 
 Menu item `11` reads device name, serial, hardware, firmware, BLE address and
@@ -84,7 +84,7 @@ controller UUID. No persistent controller state changes.
 modifica memoria persistente controller; non viene esposto da CLI.
 
 ```python
-from solem_woobee import Days, ProgramCycle, Schedule, TimeOfDay, ZoneDurations
+from custom_components.solem_woobee.woobee_api import Days, ProgramCycle, Schedule, TimeOfDay, ZoneDurations
 
 schedule = Schedule(
     number=1,
@@ -110,7 +110,7 @@ every schedule present in JSON.
 
 ```python
 from pathlib import Path
-from solem_woobee import ControllerBackup
+from custom_components.solem_woobee.woobee_api import ControllerBackup
 
 backup = await woobee.backup()
 Path("wb4-backup.json").write_text(backup.to_json())
@@ -137,5 +137,69 @@ every_three_days = Schedule(
 Verify authentication only, without actuator commands:
 
 ```bash
-python scripts/authenticate_woobee.py EF892F67-45E5-D6DB-633D-6DF1C5AFA7B5
+python scripts/authenticate_woobee.py 00000000-0000-0000-0000-000000000001
 ```
+
+## Embedded asynchronous client (SBR-90)
+
+The client now lives in `custom_components/solem_woobee/woobee_api`, following
+hass-sorgenia's embedded API layout. Update imports from the former root
+`solem_woobee` package. It has no Home Assistant imports, including type-only
+imports, and is shipped with the integration; no PyPI release is planned.
+The standalone client needs Python 3.11+, the integration targets HA 2026.8.0+
+(Python 3.14). CI runs the client on both Python versions without HA installed.
+
+```python
+from bleak import BleakClient
+from custom_components.solem_woobee.woobee_api import WooBeeConnection
+
+async with WooBeeConnection("AA:BB:CC:DD:EE:FF", BleakClient) as api:
+    state = await api.read_state()
+    info = await api.read_device_info()
+```
+
+The factory returns a fresh disconnected transport implementing `BLETransport`.
+HA may supply its own address-bound adapter to choose a Bluetooth proxy; the
+client knows nothing about HA. `WooBeeConnection` owns connection, authentication,
+subscriptions and disconnect. Alternatively `SolemSession(connected_client,
+gatt)` borrows an existing connection: use it as an async context manager, or
+call `aclose()` in `finally`. Borrowing removes notifications but never disconnects
+the caller's connection. A connection must have only one session owner; do not
+write to it through another client. Scopes cannot be reused.
+
+Authentication uses a fresh 16-byte challenge for every connection, the recovered
+protocol's standard product key and the exact success acknowledgement. This
+product key is a protocol constant, not a user credential. There is no observed
+token expiry or token refresh API. Unknown auth notifications are not treated as
+credential rejection. `AuthenticationError` means authentication is required;
+`SessionTimeoutError` (a `ConnectivityError` and `TimeoutError`) means no completed
+exchange within the deadline. Invalid challenges, response commands and malformed
+state raise `InvalidResponseError`. BLE failures raise `ConnectivityError`.
+
+Deadlines: connect/auth 10 seconds each; an entire request and all its reply
+pages 20 seconds; each notification teardown/disconnect 5 seconds. Waiting for
+the per-session operation lock is outside these deadlines. Notification queues
+and responses are capped at 128 frames. All requests in an API operation share
+the same lock, including state/identity reads and program writes. Timeout,
+cancellation or transport failure invalidate the session and remove callbacks;
+create a new connection scope and authenticate again. V6 offers no transaction
+ID, so responses from an interrupted exchange must never be reused.
+
+There are **zero automatic retries**, including read operations. Callers may
+retry a failed read with a new connection and their own bounded backoff. A start,
+stop or write may already have reached hardware when its response times out:
+refresh state rather than replaying it. Manual durations use positive whole
+minutes, zones 1–4 and a 24-bit seconds wire limit (279620 minutes). HA's smaller
+operational duration limit belongs to SBR-94. An acknowledgement reports controller
+state, not measured water flow.
+
+`ControllerIdentity` normalizes BLE MACs and CoreBluetooth UUIDs. Its ID is the
+address; four `ZoneIdentity` objects have IDs `<address>_zone_<n>`. Names, serials
+and UUID metadata never change registry identity. Missing zone durations remain
+`None`, while a reported zero remains zero. Battery and input flags remain raw.
+Programs/backup APIs are preserved for the CLI, outside the initial HA scope.
+
+Tests use synthetic BLE transports and anonymous response fixtures. No credentials
+or controller-specific secrets are required. Hardware behavior, battery scale,
+polling cadence and Bluetooth proxy behavior still need device validation; tests
+never connect to hardware or actuate valves.

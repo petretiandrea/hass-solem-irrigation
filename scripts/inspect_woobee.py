@@ -9,7 +9,7 @@ import json
 from dataclasses import asdict
 from pathlib import Path
 
-from solem_woobee import WooBeeClient
+from custom_components.solem_woobee.woobee_api import WooBeeClient
 
 
 def select_device(devices: list[object]) -> object:

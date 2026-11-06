@@ -8,7 +8,7 @@ from pathlib import Path
 
 from bleak.exc import BleakError
 
-from solem_woobee import Days, Schedule, TimeOfDay, ZoneDurations
+from custom_components.solem_woobee.woobee_api import Days, Schedule, TimeOfDay, ZoneDurations
 
 
 MENU_PATH = Path(__file__).parents[1] / "scripts" / "woobee_menu.py"
