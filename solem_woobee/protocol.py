@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 # `BleManager.isAlreadyAuthenticatedLiteral()` compares this exact byte sequence.
@@ -196,11 +197,41 @@ class WooBeeV2:
             raise ValueError("program must be an integer from 0 to 255")
         return bytes((0x31, 0x05, 0x14, 0x00, program, 0x00, 0x00))
 
+    @staticmethod
+    def set_clock_frame(when: datetime) -> bytes:
+        """APK `setTimeV5()`: controller-local calendar time."""
+        if not 1900 <= when.year <= 2155:
+            raise ValueError("controller clock year must be from 1900 to 2155")
+        return bytes((
+            0x03,
+            0x06,
+            0x00,
+            when.year - 1900,
+            when.month,
+            when.day,
+            when.hour,
+            when.minute,
+            when.second,
+        ))
+
+    @staticmethod
+    def reset_valve_faults_frame() -> bytes:
+        """APK `resetValveStatusV5()`; clears latched valve fault bits."""
+        return b"\x19\x03\x01\x7f\xff"
+
     async def read_state(self) -> "WooBeeState":
         """Return readable WB-4 state, parsed from MySOLEM Java logic."""
         from .responses import parse_state
 
         return parse_state(await self.read_state_raw())
+
+    async def read_device_info(self) -> "WooBeeDeviceInfo":
+        """Read name, serial, hardware, firmware and controller UUID."""
+        from .responses import parse_device_info
+
+        identity = await self._session.exchange_all(b"\x0f\x00")
+        uuid = await self._session.exchange_all(b"\xe3\x00")
+        return parse_device_info(identity, uuid)
 
     async def read_state_raw(self) -> dict[str, list[bytes]]:
         """APK: type 180 `readState()` sequence; decrypted replies without parsing."""
@@ -228,6 +259,16 @@ class WooBeeV2:
     async def start_program(self, program: int) -> "WooBeeStatus":
         return await self._command_status(self.start_program_frame(program))
 
+    async def sync_clock(self, when: datetime | None = None) -> list[bytes]:
+        """Set controller clock to local current time or supplied calendar time."""
+        return await self._session.exchange_all(self.set_clock_frame(when or datetime.now().astimezone()))
+
+    async def reset_valve_faults(self) -> "WooBeeValveFaults":
+        """Clear latched valve fault bits and return controller acknowledgement."""
+        from .responses import parse_valve_faults
+
+        return parse_valve_faults((await self._session.exchange_all(self.reset_valve_faults_frame()))[-1])
+
     async def read_programs_raw(self) -> list[bytes]:
         """APK `readConfigV5()`: request all irrigation-program frames, unparsed."""
         return await self._session.exchange_all(b"\x39\x00")
@@ -243,6 +284,12 @@ class WooBeeV2:
 
         return tuple(Schedule.from_program(program) for program in await self.read_programs())
 
+    async def backup(self) -> "ControllerBackup":
+        """Read all schedule data into portable client backup."""
+        from .programs import ControllerBackup
+
+        return ControllerBackup(await self.read_schedules())
+
     async def write_program(self, program: "IrrigationProgram") -> list[list[bytes]]:
         """Persist one schedule using MySOLEM `configIrriV5()` frame sequence."""
         from .programs import build_program_frames
@@ -251,3 +298,7 @@ class WooBeeV2:
 
     async def write_schedule(self, schedule: "Schedule") -> list[list[bytes]]:
         return await self.write_program(schedule.to_program())
+
+    async def restore(self, backup: "ControllerBackup") -> list[list[list[bytes]]]:
+        """Persist every schedule from a client backup, in schedule order."""
+        return [await self.write_schedule(schedule) for schedule in backup.schedules]

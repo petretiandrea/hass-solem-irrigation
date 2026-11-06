@@ -46,12 +46,15 @@ Static APK reverse engineering maps WooBee V2 firmware 7.0.2 to `type 180`,
 | Action | MySOLEM builder | Plaintext frame |
 | --- | --- | --- |
 | state | `statusV5()` | `3b 00` |
+| device info | `identificationV5()` | `0f 00`, then `e3 00` UUID |
 | valve faults | `readValveStatusV5()` | `19 03 00 10 ff` |
 | input alerts | `readInputsAlerts()` | `71 00` |
 | start zone `z`, `m` minutes | `ManualValve` → `testValvesV5(z, m * 60)` | `31 05 12 z ss ss ss` |
 | stop | `ManualStop` → `manualStopV5()` | `31 05 15 00 ff 00 00` |
 | start all, `m` minutes | `TestAllValves` → `manualRunValvesV5(m * 60)` | `31 05 11 00 ss ss ss` |
 | start program `p` | `ManualProgram` → `manualRunProgramV5(p)` | `31 05 14 00 p 00 00` |
+| sync clock | `setTimeV5()` | `03 06 00 yy mm dd hh mm ss` |
+| reset valve faults | `resetValveStatusV5()` | `19 03 01 7f ff` |
 
 `ss ss ss` is big-endian seconds. Commands are AES-CTR encrypted by
 `SolemSession`; replies are parsed from MySOLEM Java into `WooBeeState`:
@@ -72,6 +75,9 @@ Menu interattivo:
 .venv/bin/python scripts/woobee_menu.py EF892F67-45E5-D6DB-633D-6DF1C5AFA7B5
 ```
 
+Menu item `11` reads device name, serial, hardware, firmware, BLE address and
+controller UUID. No persistent controller state changes.
+
 ## Programmi irrigazione
 
 `IrrigationProgram` ricostruisce `configIrriV5()` dall'APK. `write_program()`
@@ -86,10 +92,36 @@ schedule = Schedule(
     days=Days.MONDAY | Days.WEDNESDAY | Days.FRIDAY,
     starts=(TimeOfDay(7),),
     zones=ZoneDurations.minutes(one=10, two=10, three=10, four=10),
+    water_budget=80,
+    zone_pause_seconds=30,
 )
 # await woobee.write_schedule(schedule)
 # schedules = await woobee.read_schedules()
 ```
+
+`water_budget` is controller percentage; `zone_pause_seconds` is pause between
+zones. Both are recovered from `configIrriV5()`.
+
+## Backup, clock and faults
+
+`ControllerBackup` stores this client's schedule model as JSON. It is not a
+MySOLEM app-export format. Backup reads controller schedules; restore rewrites
+every schedule present in JSON.
+
+```python
+from pathlib import Path
+from solem_woobee import ControllerBackup
+
+backup = await woobee.backup()
+Path("wb4-backup.json").write_text(backup.to_json())
+
+# await woobee.restore(ControllerBackup.from_json(Path("wb4-backup.json").read_text()))
+# await woobee.sync_clock()
+# await woobee.reset_valve_faults()
+```
+
+Menu items `7`–`10` provide backup, restore, clock sync and fault reset.
+Restore, clock sync and reset require literal confirmation.
 
 Periodic example: every three days, phase starts today.
 

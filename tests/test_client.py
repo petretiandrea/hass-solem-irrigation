@@ -1,7 +1,7 @@
 import unittest
-from datetime import date
+from datetime import date, datetime
 
-from solem_woobee import SolemGatt, SolemSession, WOOBEE_V2_GATT, WooBeeClient, WooBeeV2
+from solem_woobee import ControllerBackup, SolemGatt, SolemSession, WOOBEE_V2_GATT, WooBeeClient, WooBeeV2
 from solem_woobee.protocol import ctr_crypt
 from solem_woobee.programs import (
     Days,
@@ -14,7 +14,7 @@ from solem_woobee.programs import (
     build_program_frames,
     parse_program_replies,
 )
-from solem_woobee.responses import parse_state
+from solem_woobee.responses import parse_device_info, parse_state
 
 
 class Characteristic:
@@ -90,6 +90,11 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(b"\x31\x05\x15\x00\xff\x00\x00", WooBeeV2.stop_frame())
         self.assertEqual(b"\x31\x05\x11\x00\x00\x00\x3c", WooBeeV2.start_all_frame(1))
         self.assertEqual(b"\x31\x05\x14\x00\x00\x00\x00", WooBeeV2.start_program_frame(0))
+        self.assertEqual(
+            bytes.fromhex("0306007e0b06090807"),
+            WooBeeV2.set_clock_frame(datetime(2026, 11, 6, 9, 8, 7)),
+        )
+        self.assertEqual(bytes.fromhex("1903017fff"), WooBeeV2.reset_valve_faults_frame())
 
     async def test_static_woobee_frame_validation(self):
         with self.assertRaises(ValueError):
@@ -137,6 +142,21 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(96, state.status.battery_raw)
         self.assertEqual((), state.valve_faults.faulty_zones)
 
+    def test_parse_device_info_matches_mysolem_identification_v5(self):
+        info = parse_device_info(
+            (
+                b"\x10\x00\x00Giardino\x00",
+                bytes((0x10, 0, 1, 0xD7, 0x60, 0x40, 0, 1, 2, 0xB4, 4, ord("A"), 7, 0, 2, 2, 1)),
+            ),
+            (bytes.fromhex("e400010203"),),
+        )
+
+        self.assertEqual("Giardino", info.name)
+        self.assertEqual("D76040000102", info.bluetooth_address)
+        self.assertEqual("7.0.2", info.firmware)
+        self.assertEqual("B4040001020102", info.serial)
+        self.assertEqual("010203", info.uuid)
+
     def test_program_frames_match_static_config_irri_v5(self):
         program = IrrigationProgram(
             index=0,
@@ -178,13 +198,34 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
             days=Days.MONDAY | Days.WEDNESDAY | Days.FRIDAY,
             starts=(TimeOfDay(7), TimeOfDay(19, 30)),
             zones=ZoneDurations.minutes(one=10, two=15),
+            water_budget=75,
+            zone_pause_seconds=30,
         )
         program = schedule.to_program()
 
         self.assertEqual(0, program.index)
         self.assertEqual((420, 1170, None, None, None, None, None, None), program.start_minutes)
         self.assertEqual((600, 900, 0, 0), program.zone_durations_seconds)
+        self.assertEqual(75, program.water_budget)
+        self.assertEqual(30, program.time_between_zones)
         self.assertEqual(schedule, Schedule.from_program(program))
+
+    def test_backup_round_trip_preserves_schedule_domain_values(self):
+        backup = ControllerBackup(
+            (
+                Schedule(
+                    number=1,
+                    name="Giardino",
+                    days=Days.MONDAY | Days.FRIDAY,
+                    starts=(TimeOfDay(7, 30),),
+                    zones=ZoneDurations.minutes(one=10, two=5),
+                    water_budget=80,
+                    zone_pause_seconds=45,
+                ),
+            )
+        )
+
+        self.assertEqual(backup, ControllerBackup.from_json(backup.to_json()))
 
     def test_periodic_schedule_preserves_cycle_parameters(self):
         schedule = Schedule(

@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 from contextlib import suppress
+from pathlib import Path
 import sys
 
 from bleak import BleakClient
 from bleak.exc import BleakError
 
 from solem_woobee import (
+    ControllerBackup,
     Days,
     ProgramCycle,
     Schedule,
@@ -65,7 +67,8 @@ def format_schedule(schedule: Schedule) -> str:
     ) or "nessuna"
     return (
         f"#{schedule.number} {schedule.name or '(senza nome)'} | {schedule.cycle.name} | "
-        f"giorni: {format_days(schedule.days)} | start: {starts} | zone: {zones}"
+        f"giorni: {format_days(schedule.days)} | start: {starts} | zone: {zones} | "
+        f"budget: {schedule.water_budget}% | pausa: {schedule.zone_pause_seconds}s"
     )
 
 
@@ -91,6 +94,8 @@ def create_schedule() -> Schedule:
         three=ask_int("Durata zona 3, minuti", 0, 279620),
         four=ask_int("Durata zona 4, minuti", 0, 279620),
     )
+    water_budget = ask_int("Budget acqua, percento", 0, 65535)
+    zone_pause_seconds = ask_int("Pausa tra zone, secondi", 0, 65535)
     period_length = 2
     synchronization_day = 0
     if cycle is ProgramCycle.PERIODIC:
@@ -103,6 +108,8 @@ def create_schedule() -> Schedule:
         starts=starts,
         zones=durations,
         cycle=cycle,
+        water_budget=water_budget,
+        zone_pause_seconds=zone_pause_seconds,
         period_length=period_length,
         synchronization_day=synchronization_day,
     )
@@ -145,7 +152,8 @@ async def menu(address: str) -> None:
     client, woobee = await connect(address)
     try:
         while True:
-            print("\n1 Stato  2 Avvia zona  3 Stop  4 Programmi  5 Salva programma  6 RSSI  0 Esci")
+            print("\n1 Stato  2 Avvia zona  3 Stop  4 Programmi  5 Salva programma")
+            print("6 RSSI  7 Backup  8 Ripristina  9 Sync orologio  10 Reset fault  11 Info device  0 Esci")
             choice = input("> ").strip()
             try:
                 if choice == "0":
@@ -171,6 +179,35 @@ async def menu(address: str) -> None:
                         print("Annullato.")
                 elif choice == "6":
                     print(f"RSSI: {await macos_rssi(client)} dBm")
+                elif choice == "7":
+                    path = Path(input("File backup JSON: ").strip()).expanduser()
+                    path.write_text((await woobee.backup()).to_json() + "\n", encoding="utf-8")
+                    print(f"Backup salvato: {path}")
+                elif choice == "8":
+                    path = Path(input("File backup JSON: ").strip()).expanduser()
+                    backup = ControllerBackup.from_json(path.read_text(encoding="utf-8"))
+                    print(f"Ripristino: {len(backup.schedules)} programmi da {path}")
+                    if input("Scrivi RIPRISTINA per sovrascrivere programmi: ") == "RIPRISTINA":
+                        await woobee.restore(backup)
+                        print("Backup ripristinato.")
+                    else:
+                        print("Annullato.")
+                elif choice == "9":
+                    if input("Scrivi ORA per sincronizzare orologio controller: ") == "ORA":
+                        await woobee.sync_clock()
+                        print("Orologio sincronizzato.")
+                    else:
+                        print("Annullato.")
+                elif choice == "10":
+                    if input("Scrivi RESET per azzerare fault valvole: ") == "RESET":
+                        print(f"Fault valvole: {(await woobee.reset_valve_faults()).faulty_zones or 'nessuno'}")
+                    else:
+                        print("Annullato.")
+                elif choice == "11":
+                    info = await woobee.read_device_info()
+                    print(f"Nome: {info.name or 'n/d'} | Seriale: {info.serial or 'n/d'}")
+                    print(f"Firmware: {info.firmware or 'n/d'} | Hardware: {info.hardware or 'n/d'}")
+                    print(f"Indirizzo: {info.bluetooth_address or 'n/d'} | UUID: {info.uuid or 'n/d'}")
                 else:
                     print("Scelta non valida.")
             except Exception as exc:

@@ -44,6 +44,6 @@ class MenuTests(unittest.TestCase):
 
         self.assertEqual(
             menu.format_schedule(schedule),
-            "#1 Giardino | CUSTOM | giorni: Lun, Mer | start: 07:00 | zone: Z1=10m, Z3=5m",
+            "#1 Giardino | CUSTOM | giorni: Lun, Mer | start: 07:00 | zone: Z1=10m, Z3=5m | budget: 100% | pausa: 0s",
         )
 

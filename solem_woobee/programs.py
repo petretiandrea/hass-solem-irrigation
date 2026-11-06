@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 from enum import IntEnum, IntFlag
+import json
 
 
 class Weekday(IntEnum):
@@ -147,6 +148,7 @@ class Schedule:
     zones: ZoneDurations = field(default_factory=lambda: ZoneDurations.minutes())
     cycle: ProgramCycle = ProgramCycle.CUSTOM
     water_budget: int = 100
+    zone_pause_seconds: int = 0
     period_length: int = 2
     synchronization_day: int = 0
 
@@ -155,6 +157,10 @@ class Schedule:
             raise ValueError("schedule number must be from 1 to 12")
         if len(self.starts) > 8:
             raise ValueError("WB-4 supports at most 8 start times")
+        if not 0 <= self.water_budget <= 0xFFFF:
+            raise ValueError("water budget must fit 16 bits")
+        if not 0 <= self.zone_pause_seconds <= 0xFFFF:
+            raise ValueError("zone pause must fit 16-bit seconds")
         if not 1 <= self.period_length <= 255:
             raise ValueError("period length must be from 1 to 255 days")
         if not 0 <= self.synchronization_day < self.period_length:
@@ -170,6 +176,7 @@ class Schedule:
             zone_durations_seconds=self.zones.seconds,
             cycle=self.cycle,
             water_budget=self.water_budget,
+            time_between_zones=self.zone_pause_seconds,
             period_length=self.period_length,
             synchronization_day=self.synchronization_day,
         )
@@ -184,9 +191,74 @@ class Schedule:
             zones=ZoneDurations.from_seconds(program.zone_durations_seconds),
             cycle=program.cycle,
             water_budget=program.water_budget,
+            zone_pause_seconds=program.time_between_zones,
             period_length=program.period_length,
             synchronization_day=program.synchronization_day,
         )
+
+
+@dataclass(frozen=True)
+class ControllerBackup:
+    """Portable backup of WB-4 schedules, independent of BLE frame layout."""
+
+    schedules: tuple[Schedule, ...]
+
+    def __post_init__(self) -> None:
+        if len({schedule.number for schedule in self.schedules}) != len(self.schedules):
+            raise ValueError("backup contains duplicate schedule numbers")
+
+    def to_json(self) -> str:
+        return json.dumps(
+            {
+                "format": "solem-woobee-backup/v1",
+                "schedules": [
+                    {
+                        "number": schedule.number,
+                        "name": schedule.name,
+                        "days": int(schedule.days),
+                        "starts": [{"hour": time.hour, "minute": time.minute} for time in schedule.starts],
+                        "zone_seconds": list(schedule.zones.seconds),
+                        "cycle": int(schedule.cycle),
+                        "water_budget": schedule.water_budget,
+                        "zone_pause_seconds": schedule.zone_pause_seconds,
+                        "period_length": schedule.period_length,
+                        "synchronization_day": schedule.synchronization_day,
+                    }
+                    for schedule in self.schedules
+                ],
+            },
+            indent=2,
+            sort_keys=True,
+        )
+
+    @classmethod
+    def from_json(cls, value: str) -> "ControllerBackup":
+        payload = json.loads(value)
+        if not isinstance(payload, dict) or payload.get("format") != "solem-woobee-backup/v1":
+            raise ValueError("not a solem-woobee backup v1")
+        schedules = payload.get("schedules")
+        if not isinstance(schedules, list):
+            raise ValueError("backup schedules must be a list")
+        try:
+            return cls(
+                tuple(
+                    Schedule(
+                        number=item["number"],
+                        name=item.get("name", ""),
+                        days=Days(item.get("days", int(Days.EVERY_DAY))),
+                        starts=tuple(TimeOfDay(**time) for time in item.get("starts", [])),
+                        zones=ZoneDurations.from_seconds(tuple(item.get("zone_seconds", (0, 0, 0, 0)))),
+                        cycle=ProgramCycle(item.get("cycle", int(ProgramCycle.CUSTOM))),
+                        water_budget=item.get("water_budget", 100),
+                        zone_pause_seconds=item.get("zone_pause_seconds", 0),
+                        period_length=item.get("period_length", 2),
+                        synchronization_day=item.get("synchronization_day", 0),
+                    )
+                    for item in schedules
+                )
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("invalid solem-woobee backup") from exc
 
 
 def build_program_frames(program: IrrigationProgram, today: date | None = None) -> list[bytes]:

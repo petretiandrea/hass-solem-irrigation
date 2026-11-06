@@ -47,10 +47,54 @@ class WooBeeInputAlerts:
 
 
 @dataclass(frozen=True)
+class WooBeeDeviceInfo:
+    """MySOLEM `identificationAnswerV5()` and `readUUIDanswer()` fields."""
+
+    name: str | None
+    bluetooth_address: str | None
+    hardware: str | None
+    firmware: str | None
+    serial: str | None
+    uuid: str | None
+    raw_identification: tuple[bytes, ...]
+    raw_uuid: tuple[bytes, ...]
+
+
+@dataclass(frozen=True)
 class WooBeeState:
     status: WooBeeStatus
     valve_faults: WooBeeValveFaults
     input_alerts: WooBeeInputAlerts
+
+
+def parse_device_info(identity_replies: list[bytes] | tuple[bytes, ...], uuid_replies: list[bytes] | tuple[bytes, ...]) -> WooBeeDeviceInfo:
+    """Parse V5 identity pages exactly as MySOLEM does; missing pages stay None."""
+    name = bluetooth_address = hardware = firmware = serial = None
+    for reply in identity_replies:
+        if len(reply) < 3 or reply[0] != 0x10:
+            continue
+        if reply[2] == 0:
+            name = reply[3:18].split(b"\0", 1)[0].decode("utf-8")
+        elif reply[2] == 1 and len(reply) >= 17:
+            address = reply[3:9].hex().upper()
+            bluetooth_address = address
+            hardware = chr(reply[11])
+            firmware = f"{reply[12]}.{reply[13]}.{reply[14]}"
+            serial = f"{reply[9]:02X}{reply[10]:02X}{address[6:]}{reply[16]:02X}{reply[15]:02X}"
+    uuid = None
+    for reply in uuid_replies:
+        if len(reply) >= 2 and reply[0] == 0xE4:
+            uuid = reply[2:].hex().upper()
+    return WooBeeDeviceInfo(
+        name=name,
+        bluetooth_address=bluetooth_address,
+        hardware=hardware,
+        firmware=firmware,
+        serial=serial,
+        uuid=uuid,
+        raw_identification=tuple(identity_replies),
+        raw_uuid=tuple(uuid_replies),
+    )
 
 
 def parse_status(replies: list[bytes] | tuple[bytes, ...]) -> WooBeeStatus:

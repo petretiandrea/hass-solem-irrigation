@@ -9,9 +9,10 @@ from .protocol import (
     SolemSession,
     WooBeeV2,
 )
-from .responses import WooBeeInputAlerts, WooBeeState, WooBeeStatus, WooBeeValveFaults
+from .responses import WooBeeDeviceInfo, WooBeeInputAlerts, WooBeeState, WooBeeStatus, WooBeeValveFaults
 from .programs import (
     Days,
+    ControllerBackup,
     IrrigationProgram,
     ProgramCycle,
     Schedule,
@@ -34,11 +35,13 @@ __all__ = [
     "WooBeeProfile",
     "WooBeeV2",
     "WooBeeInputAlerts",
+    "WooBeeDeviceInfo",
     "WooBeeState",
     "WooBeeStatus",
     "WooBeeValveFaults",
     "IrrigationProgram",
     "Days",
+    "ControllerBackup",
     "ProgramCycle",
     "Schedule",
     "TimeOfDay",
