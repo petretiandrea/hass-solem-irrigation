@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "solem-woobee"
+version = "0.1.0"
+description = "Read-only BLE discovery for SOLEM WooBee controllers"
+requires-python = ">=3.10"
+dependencies = ["bleak>=0.22", "cryptography>=42"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
