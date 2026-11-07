@@ -74,7 +74,9 @@ async def test_registry_shared_and_unload(hass):
 async def test_scheduled_poll_stops_after_unload(hass, freezer):
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS})
     entry.add_to_hass(hass)
-    with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()) as read:
+    with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()) as read, patch.object(
+        hass.config_entries, "async_forward_entry_setups", return_value=None,
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         # Setup alone must not keep battery-powered BLE polling alive.
@@ -144,4 +146,19 @@ async def test_invalid_zone(hass, zone):
     coordinator = WooBeeCoordinator(hass, MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS}))
     with pytest.raises(ValueError):
         WooBeeZoneEntity(coordinator, zone)
+    await coordinator.async_shutdown()
+
+
+async def test_failure_and_recovery_logged_once(hass, caplog):
+    """Repeated failed polls must not flood logs or duplicate recovery messages."""
+    coordinator = WooBeeCoordinator(hass, MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS}))
+    with patch("custom_components.solem_woobee.coordinator.async_validate_device",
+               side_effect=[snapshot(), ConnectivityError(), ConnectivityError(), snapshot(), snapshot()]):
+        with caplog.at_level(logging.INFO, logger="custom_components.solem_woobee.coordinator"):
+            for _ in range(5):
+                await coordinator.async_refresh()
+    messages = [record.getMessage() for record in caplog.records
+                if record.name == "custom_components.solem_woobee.coordinator"]
+    assert sum("Error fetching" in message for message in messages) == 1
+    assert sum("data recovered" in message for message in messages) == 1
     await coordinator.async_shutdown()

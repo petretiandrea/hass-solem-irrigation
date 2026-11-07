@@ -226,7 +226,8 @@ validation; unavailable controllers retry setup through Home Assistant.
 
 The coordinator performs an initial read during setup. Periodic polling runs
 every five minutes only while entities subscribe; with no active entities it
-stops automatically. Entity platforms are introduced in SBR-93/SBR-94. The client is embedded, not fetched
+stops automatically. Read-only sensor and binary_sensor platforms share this snapshot. Commands are
+reserved for SBR-94. The client is embedded, not fetched
 from PyPI, and shares the integration version in `manifest.json`.
 
 Integration tests: install `requirements_test.txt` and run
@@ -238,6 +239,63 @@ tests do not load the Home Assistant integration package. HACS still installs
 the client at `custom_components/solem_woobee/woobee_api`; integration modules
 use relative imports. All Python imports stay at module top level.
 
+
+### Read-only entities
+
+All four zones belong to the physical controller device. Names are translated
+in English and Italian. Entity unique IDs use the normalized configured address plus
+zone number and measurement key; renaming or receiving serial/UUID metadata
+does not replace registry entries.
+
+| Entity | Source / interpretation | Metadata |
+| --- | --- | --- |
+| Zone 1–4 remaining time | Reported seconds; missing page is unknown, zero stays zero | Duration, seconds; no state class (countdown, no long-term statistics) |
+| Zone 1–4 irrigating | Reported active zone equals this zone | Running; controller status, not measured water flow |
+| Zone 1–4 valve fault | Zone in the client's decoded fault bitmap | Problem, diagnostic |
+| Irrigation enabled / manual irrigation | Reported status flags | Read-only binary sensors |
+| Sensor input open | Raw open flag; does not infer rain or soil moisture | Diagnostic |
+| Clock alarm | Reported clock alarm flag | Problem, diagnostic |
+| Last read successful | Success of the shared snapshot read | Connectivity, diagnostic |
+| Battery raw value | Unscaled battery byte | Diagnostic, disabled by default, no unit/device/state class |
+
+Connectivity describes the **last read**, not an always-connected BLE link; the
+client disconnects after every read. On a failed update it turns off, while all
+other enabled entities become unavailable until recovery. Missing optional
+zone durations remain available with an unknown value. Values update at the
+five-minute polling interval; countdowns are not extrapolated between reads.
+
+Enable the raw battery entity from the device's entity settings only if useful
+for investigation. Its scale is unverified: it must not be interpreted as a
+percentage or voltage. RSSI, rain-delay units, active-program labels and input
+alert meanings are not exposed because the shared client provides no verified
+measurement/interpretation for them. No configuration entities or additional
+platforms are justified by these read-only fields.
+
+### Examples and troubleshooting
+
+To monitor irrigation, add the four **Zone N irrigating** binary sensors and
+**Zone N remaining time** sensors to a dashboard. Use the entity picker to select
+them: entity IDs depend on the controller name and server language. A remaining
+time of zero is reported idle time; unknown means its duration page was absent.
+
+To receive valve-fault notifications, create an automation in **Settings →
+Automations & scenes**. Choose an **Entity → State** trigger, select the zone's
+**valve fault** entity and set **To** to **On**. Add your preferred notification
+action. Repeat for the other zones. This reports controller faults and does not
+prove whether water is flowing.
+
+If all state entities become unavailable, check **Last read successful**, the
+integration logs and the controller's Bluetooth reachability. Keep it within
+range of a connectable HA Bluetooth adapter/proxy and disconnect other apps
+that may occupy its BLE connection slot. Wait for the next five-minute poll or
+reload the integration after restoring connectivity. Repeated failure logs are
+suppressed; recovery is logged once. There is no password to reset.
+
+If only a duration is unknown, the shared read succeeded but the controller
+omitted that optional page. Do not replace it with zero. If a diagnostic entity
+is missing from the dashboard, check whether it is disabled in the device's
+entity settings. Raw battery values cannot establish battery charge; there is
+no supported percentage threshold for low-battery automations.
 
 ### Remove the integration
 

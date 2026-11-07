@@ -19,5 +19,38 @@
       "already_configured": "This controller is already configured.",
       "no_devices_found": "No connectable Bluetooth devices found. Bring the controller within range and retry."
     }
+  },
+  "entity": {
+    "sensor": {
+      "remaining_time": {
+        "name": "Zone {zone} remaining time"
+      },
+      "battery_raw": {
+        "name": "Battery raw value"
+      }
+    },
+    "binary_sensor": {
+      "connectivity": {
+        "name": "Last read successful"
+      },
+      "enabled": {
+        "name": "Irrigation enabled"
+      },
+      "manual": {
+        "name": "Manual irrigation"
+      },
+      "sensor_open": {
+        "name": "Sensor input open"
+      },
+      "clock_alarm": {
+        "name": "Clock alarm"
+      },
+      "irrigating": {
+        "name": "Zone {zone} irrigating"
+      },
+      "valve_fault": {
+        "name": "Zone {zone} valve fault"
+      }
+    }
   }
 }

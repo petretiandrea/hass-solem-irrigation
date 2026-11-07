@@ -1,4 +1,4 @@
-"""Shared availability and controller association for future platforms."""
+"""Shared availability and controller association for WooBee platforms."""
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
