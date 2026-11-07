@@ -37,10 +37,25 @@ hardware evidence.
 
 ## Home Assistant quality
 
-Use `quality_scale.yaml` and `docs/quality-scale.md` as acceptance criteria.
-Update evidence/status when changing behavior; do not claim a tier while rules
-remain TODO. Preserve unknown values as None and let real entity subscriptions
-own coordinator polling. New platforms must verify HA states and registry IDs.
+The Home Assistant Integration Quality Scale must guide design, implementation
+and review for every integration task, including work tracked in Linear. Review
+the applicable official rules before implementing a change:
+https://contributors.home-assistant.io/core/quality-scale/.
+
+Use `custom_components/solem_woobee/quality_scale.yaml` and
+`docs/quality-scale.md` as acceptance criteria. For each affected rule, implement
+the requirement and record concrete evidence (code, tests or documentation), or
+document a justified exemption. Keep unresolved requirements explicitly TODO;
+do not mark rules done merely because tests pass or a base class is used.
+Update the checklist and review evidence in the same PR as the behavior change.
+PR descriptions and Linear completion updates must identify applicable checks
+and remaining gaps. Do not claim a tier while its required rules remain TODO.
+
+Preserve unknown values as None and let real entity subscriptions own
+coordinator polling. New platforms must verify actual HA states, registry IDs,
+device association, translations, metadata and unload behavior. Run the HA
+integration tests and the per-module coverage gate described in
+`docs/quality-scale.md` for changes to the HA adapter.
 
 ## Verify
 
