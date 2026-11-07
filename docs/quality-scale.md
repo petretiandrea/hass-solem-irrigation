@@ -34,7 +34,7 @@ Command errors are covered by SBR-94 simulations. Read platforms
 explicitly declare parallel update behavior. Fixed-key BLE has no user credentials or reauthentication flow; that
 exemption is documented rather than inventing a cloud login.
 
-Gold/Platinum work (diagnostics, verified discovery, exception translations,
+Gold/Platinum work (verified discovery, exception translations,
 strict typing and lifecycle configuration flows) remains visible in the checklist.
 Five-minute polling is a documented conservative choice, not a measured battery
 or BLE limit. Hardware tests are still needed for battery impact and freshness.
@@ -141,3 +141,66 @@ coverage is 100% in each of 13 adapter modules, and the >95% per-module gate
 passes. All 34 client unittests, compileall and git diff --check pass. The full
 official hassfest validator (Core f8cdb14) reports 1 integration, 0 invalid.
 HA 2026.8.0 emits pytest-socket warnings from Bluetooth setup without failures.
+
+## SBR-95 diagnostics and cross-cutting tests
+
+Reviewed official [diagnostics](https://contributors.home-assistant.io/core/quality-scale/diagnostics/),
+[log-when-unavailable](https://contributors.home-assistant.io/core/quality-scale/log-when-unavailable/)
+and [test-coverage](https://contributors.home-assistant.io/core/quality-scale/test-coverage/)
+rules. `diagnostics.py` uses an explicit allowlist of cached operational fields;
+no entry serialization, identities, raw frames or session/credential objects are
+exported. It makes no BLE requests. `test_diagnostics.py` covers the actual HA
+HTTP download, sensitive synthetic fields, missing data and stale/empty snapshots.
+The diagnostics rule is done independently of discovery, which remains TODO.
+
+`test_errors.py` verifies auth, connectivity, invalid-response and timeout errors,
+one outage/recovery log and successful fresh-session recovery on the next poll
+after authentication rejection. Poll and command failures explicitly chain the
+original exception with `raise ... from exc`, preserving its messages, notes,
+attributes, traceback and nested causes. Exceptions are not anonymized.
+Integration-owned availability messages do not interpolate client error text.
+Existing flow/lifecycle/entity/command tests cover the complete HA surface; all
+fixtures and BLE failures are simulated. No cloud token expiry flow applies.
+
+`docs/diagnostics-and-validation.md` maps automated evidence to acceptance criteria
+and provides a supervised WB-4 procedure, including anonymous downloads, offline
+and recovery checks, physical zone validation and a pending hardware report.
+This updates diagnostics, troubleshooting, known-limitations, availability/logging,
+action-exceptions, config-flow-test-coverage, unloading and test-coverage evidence.
+No hardware was accessed for this task. Whole-client coverage, branding, dependency
+provenance, discovery, exception translations, strict typing and other existing
+TODOs remain; no official tier is claimed.
+
+SBR-95 validation: Python 3.14.10; 90 HA integration tests passed on each of
+HA 2026.8.0/plugin 0.13.354 and HA 2026.10.4/plugin 0.13.375. All 14 HA adapter
+modules have 100% line/branch coverage; the >95% per-module gate passes. All
+34 client unittests, compileall and git diff --check pass. Full official hassfest
+from Core tag 2026.10.4 (357cae5) reports 1 integration, 0 invalid integrations.
+HA 2026.8.0 emits 54 pytest-socket warnings during mocked Bluetooth setup; no
+tests fail and no real hardware is used. Local checks do not assert remote CI
+success. The integration-only coverage run reports 54% overall including the
+embedded client: it is not evidence of whole-integration Silver compliance.
+
+The Sorgenia template's `async_get_config_entry_diagnostics` entry point and
+coordinator runtime pattern were checked directly. WooBee uses an operational
+field allowlist instead of serializing/redacting whole entry data and arbitrary
+exception strings, so new identity/session fields remain excluded by default.
+
+
+### SBR-95 PR review: original exception causes
+
+Per review clarification, exception anonymization is out of scope. Removed the
+exception-copy helper and chain the original client exceptions in all three
+coordinator handlers with `from exc`. Downloadable diagnostics retain their
+operational allowlist. `test_errors.py` checks original cause identity and
+unmodified nested causes, messages and notes for read/command failures, as well
+as availability logging and fresh-session recovery. Applicable rules remain
+action-exceptions, log-when-unavailable and test-coverage. Existing Quality Scale
+TODOs and hardware limitations remain unchanged.
+
+Validation after removing exception anonymization: 99 integration tests pass on
+both HA 2026.10.4 and 2026.8.0 with Python 3.14.10. All 14 adapter modules have
+100% line/branch coverage and pass the >95% per-module gate. All 34 client tests,
+compileall, git diff --check and full official hassfest (1 integration, 0 invalid)
+pass. HA 2026.8.0 retains 54 mocked-Bluetooth pytest-socket warnings. No hardware
+validation or additional Quality Scale tier is claimed.

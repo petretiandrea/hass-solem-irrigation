@@ -74,7 +74,7 @@ rules:
       setup.
   action-exceptions:
     status: done
-    comment: Command validation, transport failures and unconfirmed outcomes raise HA errors; test_commands.py.
+    comment: Command validation, transport failures and unconfirmed outcomes raise HA errors; test_commands.py. test_errors.py verifies original exception causes, messages, notes and nested chains.
   parallel-updates:
     status: done
     comment: All platforms set PARALLEL_UPDATES=0; coordinator lock serializes commands and reads. test_commands.py.
@@ -99,7 +99,7 @@ rules:
   log-when-unavailable:
     status: done
     comment: Coordinator logs first failure and recovery without per-poll duplication; test_failure_and_recovery_logged_once
-      verifies two consecutive failures and two successful reads.
+      verifies two consecutive failures and two successful reads. test_errors.py checks availability messages at DEBUG, original causal chains and fresh-session recovery.
   reauthentication-flow:
     status: exempt
     comment: 'No user account or renewable credential: fixed protocol key and fresh challenge on every
@@ -113,14 +113,14 @@ rules:
     comment: All 23 registry entities share the normalized controller device; registry associations remain
       stable across metadata changes and reload.
   diagnostics:
-    status: todo
-    comment: Diagnostics redaction and a verified Bluetooth advertisement matcher are not implemented.
+    status: done
+    comment: diagnostics.py exports only allowlisted cached operational fields; no identity, config, raw frames or session secrets. test_diagnostics.py verifies empty, stale and partial data without I/O.
   discovery:
     status: todo
-    comment: Diagnostics redaction and a verified Bluetooth advertisement matcher are not implemented.
+    comment: A verified Bluetooth advertisement matcher is not implemented.
   discovery-update-info:
     status: todo
-    comment: Diagnostics redaction and a verified Bluetooth advertisement matcher are not implemented.
+    comment: A verified Bluetooth advertisement matcher is not implemented.
   docs-data-update:
     status: done
     comment: README.md and docs/coordinator.md describe WB-4 firmware scope, read snapshots, missing values,
@@ -144,7 +144,7 @@ rules:
   docs-troubleshooting:
     status: done
     comment: README covers failed reads, BLE range/connection slots, next poll/reload, optional unknown
-      pages and enabling diagnostic entities.
+      pages and enabling diagnostic entities. docs/diagnostics-and-validation.md documents anonymous downloads and supervised hardware checks.
   docs-use-cases:
     status: done
     comment: README explains irrigation monitoring and per-zone valve-fault notifications, with reported-state

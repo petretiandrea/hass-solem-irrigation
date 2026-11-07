@@ -35,9 +35,13 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
         except AuthenticationError as exc:
             # Fixed protocol key: no credentials a user can replace via reauth.
             # A fresh challenge on the next poll permits recovery without reload.
-            raise UpdateFailed("Controller authentication failed") from exc
+            raise UpdateFailed(
+                "Controller authentication failed; next poll opens a fresh session"
+            ) from exc
         except (ConnectivityError, InvalidResponseError, TimeoutError) as exc:
-            raise UpdateFailed("Unable to read controller snapshot") from exc
+            raise UpdateFailed(
+                "Unable to read controller snapshot; check Bluetooth reachability and response data"
+            ) from exc
 
     async def async_irrigate(
         self, zone: int | None, minutes: int = 1, *, close_zone: bool = False,
