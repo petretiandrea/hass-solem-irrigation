@@ -9,3 +9,6 @@ MySOLEM.apk
 .coverage
 coverage.json
 htmlcov/
+
+.mypy_cache/
+dist/

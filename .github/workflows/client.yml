@@ -16,6 +16,17 @@ jobs:
       - run: python -m pip install ruff==0.14.3
       - run: python -m ruff check custom_components scripts tests
       - run: python scripts/check_distribution.py
+  typing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version-file: .python-version
+      - run: python -m pip install -e . -r requirements_typing.txt
+      - run: python -m mypy
+      - run: python -m build --no-isolation
+      - run: python scripts/check_typed_distribution.py
   test:
     runs-on: ubuntu-latest
     steps:

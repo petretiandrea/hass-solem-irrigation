@@ -4,13 +4,11 @@ WooBee uses a fixed protocol key, not user credentials. Authentication is
 repeated for each connection; there is no credential reauthentication flow.
 Automatic discovery awaits a verified advertisement matcher.
 """
-from typing import Any
-
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.components import bluetooth
 from homeassistant.const import CONF_ADDRESS
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.config_entries import ConfigFlowResult
 
 from ..connection import async_validate_device
 from ..const import DOMAIN
@@ -22,7 +20,7 @@ class WooBeeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, object] | None = None) -> ConfigFlowResult:
         errors = {}
         devices = {
             normalize_address(info.address): f"{info.name or 'Bluetooth'} ({info.address})"
@@ -30,7 +28,10 @@ class WooBeeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         }
         if user_input is not None:
             try:
-                address = normalize_address(user_input[CONF_ADDRESS])
+                raw_address = user_input[CONF_ADDRESS]
+                if not isinstance(raw_address, str):
+                    raise InvalidResponseError("controller address must be a string")
+                address = normalize_address(raw_address)
                 await self.async_set_unique_id(address)
                 self._abort_if_unique_id_configured()
                 data = await async_validate_device(self.hass, address)

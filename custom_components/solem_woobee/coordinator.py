@@ -25,7 +25,10 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
     def __init__(self, hass: HomeAssistant, entry: WooBeeConfigEntry) -> None:
         super().__init__(hass, _LOGGER, name=DOMAIN, config_entry=entry,
                          update_interval=POLL_INTERVAL)
-        self.address = entry.data[CONF_ADDRESS]
+        address: object = entry.data[CONF_ADDRESS]
+        if not isinstance(address, str):
+            raise ValueError("controller address must be a string")
+        self.address = address
         self._io_lock = Lock()
 
     async def _async_update_data(self) -> WooBeeData:

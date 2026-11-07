@@ -58,7 +58,11 @@ class WooBeeControllerBinarySensor(WooBeeEntity, BinarySensorEntity):
     def is_on(self) -> bool:
         if self.entity_description.key == "connectivity":
             return self.coordinator.last_update_success
-        return getattr(self.coordinator.data.state.status, self.entity_description.key)
+        status = self.coordinator.data.state.status
+        return {
+            "enabled": status.enabled, "manual": status.manual,
+            "sensor_open": status.sensor_open, "clock_alarm": status.clock_alarm,
+        }[self.entity_description.key]
 
 
 class WooBeeZoneBinarySensor(WooBeeZoneEntity, BinarySensorEntity):
@@ -68,7 +72,7 @@ class WooBeeZoneBinarySensor(WooBeeZoneEntity, BinarySensorEntity):
                  description: BinarySensorEntityDescription) -> None:
         super().__init__(coordinator, zone)
         self.entity_description = description
-        self._attr_unique_id += f"_{description.key}"
+        self._attr_unique_id = f"{ControllerIdentity(coordinator.address).zones[zone - 1].unique_id}_{description.key}"
         self._attr_translation_placeholders = {"zone": str(zone)}
 
     @property

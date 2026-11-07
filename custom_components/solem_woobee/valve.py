@@ -1,7 +1,6 @@
 """Timed water valves with controller-reported state and guarded global stop."""
-from typing import Any
-
-from homeassistant.components.valve import ValveDeviceClass, ValveEntity, ValveEntityFeature
+from homeassistant.components.valve.const import ValveDeviceClass, ValveEntityFeature
+from homeassistant.components.valve.entity import ValveEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -39,16 +38,28 @@ class WooBeeValve(WooBeeZoneEntity, ValveEntity):
     @property
     def default_duration_minutes(self) -> int:
         """Persist the user's local default, independently for each zone."""
-        return self._entry.options.get(DURATION_OPTIONS, {}).get(str(self.zone), 1)
+        return self._duration_options().get(str(self.zone), 1)
+
+    def _duration_options(self) -> dict[str, int]:
+        """Validate persisted data at the untyped HA options boundary."""
+        value: object = self._entry.options.get(DURATION_OPTIONS, {})
+        if not isinstance(value, dict):
+            raise ValueError("zone durations must be a mapping")
+        durations: dict[str, int] = {}
+        for key, minutes in value.items():
+            if not isinstance(key, str):
+                raise ValueError("zone duration keys must be strings")
+            durations[key] = valid_minutes(minutes)
+        return durations
 
     @property
     def extra_state_attributes(self) -> dict[str, int]:
         return {"default_duration_minutes": self.default_duration_minutes}
 
-    async def async_open_valve(self, **kwargs: Any) -> None:
+    async def async_open_valve(self, **kwargs: object) -> None:
         await self.async_start_irrigation(self.default_duration_minutes)
 
-    async def async_close_valve(self, **kwargs: Any) -> None:
+    async def async_close_valve(self, **kwargs: object) -> None:
         await self.coordinator.async_irrigate(self.zone, close_zone=True)
 
     async def async_start_irrigation(self, minutes: int) -> None:
@@ -57,7 +68,7 @@ class WooBeeValve(WooBeeZoneEntity, ValveEntity):
 
     async def async_set_default_duration(self, minutes: int) -> None:
         """Store HA's duration preference without writing controller programs."""
-        durations = {**self._entry.options.get(DURATION_OPTIONS, {}),
+        durations = {**self._duration_options(),
                      str(self.zone): valid_minutes(minutes)}
         self.hass.config_entries.async_update_entry(
             self._entry, options={**self._entry.options, DURATION_OPTIONS: durations},

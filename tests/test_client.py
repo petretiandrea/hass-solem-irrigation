@@ -1,3 +1,4 @@
+import json
 import unittest
 from datetime import date, datetime
 
@@ -245,3 +246,20 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(3, program.period_length)
         self.assertEqual(1, program.synchronization_day)
 
+
+
+class BackupTypingTests(unittest.TestCase):
+    def test_untrusted_backup_fields_are_validated(self):
+        for value in ([], {"format": "other"},
+                      {"format": "solem-woobee-backup/v1", "schedules": "bad"}):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                ControllerBackup.from_json(json.dumps(value))
+        for item in (None, {"number": True}, {"number": 1, "name": []},
+                     {"number": 1, "starts": [3]},
+                     {"number": 1, "starts": [{"hour": "7"}]},
+                     {"number": 1, "zone_seconds": [1, 2]},
+                     {"number": 1, "zone_seconds": [0, 0, False, 0]}):
+            with self.subTest(item=item), self.assertRaises(ValueError):
+                ControllerBackup.from_json(json.dumps({
+                    "format": "solem-woobee-backup/v1", "schedules": [item],
+                }))

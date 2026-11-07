@@ -133,7 +133,7 @@ def parse_status(replies: list[bytes] | tuple[bytes, ...]) -> WooBeeStatus:
         active_program=general[8],
         active_zone=active_zone,
         remaining_seconds=zone_seconds[active_zone - 1] if active_zone else None,
-        zone_remaining_seconds=tuple(zone_seconds[:4]),
+        zone_remaining_seconds=(zone_seconds[0], zone_seconds[1], zone_seconds[2], zone_seconds[3]),
         raw_pages=tuple(replies),
     )
 
