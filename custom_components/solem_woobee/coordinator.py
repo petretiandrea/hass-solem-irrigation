@@ -12,42 +12,11 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .connection import async_validate_device, connection_scope
 from .const import DOMAIN
 from .data import WooBeeConfigEntry, WooBeeData
-from .woobee_api import AuthenticationError, ConnectivityError, InvalidResponseError, SessionTimeoutError
+from .woobee_api import AuthenticationError, ConnectivityError, InvalidResponseError
 from .woobee_api.protocol import WooBeeV2
 
 _LOGGER = logging.getLogger(__name__)
 POLL_INTERVAL = timedelta(minutes=5)
-
-
-def _redacted_exception(error: BaseException) -> BaseException:
-    """Copy the causal traceback without arbitrary messages, notes or attributes.
-
-    Keep known client exception types. For other transport errors, retain the
-    original class name in a plain RuntimeError. Never mutate the client error.
-    The memo preserves shared/cyclic cause and context links without recursion
-    loops; traceback formatting retains Python's original suppression semantics.
-    """
-    copies: dict[int, BaseException] = {}
-
-    def copy_exception(original: BaseException) -> BaseException:
-        if id(original) in copies:
-            return copies[id(original)]
-        error_type = type(original)
-        safe_type = error_type if error_type in (
-            AuthenticationError, ConnectivityError, InvalidResponseError,
-            SessionTimeoutError, TimeoutError,
-        ) else RuntimeError
-        safe = safe_type(f"{error_type.__name__}: details redacted")
-        copies[id(original)] = safe
-        safe.__traceback__ = original.__traceback__
-        if original.__cause__ is not None:
-            safe.__cause__ = copy_exception(original.__cause__)
-        if original.__context__ is not None:
-            safe.__context__ = copy_exception(original.__context__)
-        safe.__suppress_context__ = original.__suppress_context__
-        return safe
-
-    return copy_exception(error)
 
 
 class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
@@ -66,14 +35,13 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
         except AuthenticationError as exc:
             # Fixed protocol key: no credentials a user can replace via reauth.
             # A fresh challenge on the next poll permits recovery without reload.
-            # Transport exceptions may contain addresses or other sensitive text.
             raise UpdateFailed(
                 "Controller authentication failed; next poll opens a fresh session"
-            ) from _redacted_exception(exc)
+            ) from exc
         except (ConnectivityError, InvalidResponseError, TimeoutError) as exc:
             raise UpdateFailed(
                 "Unable to read controller snapshot; check Bluetooth reachability and response data"
-            ) from _redacted_exception(exc)
+            ) from exc
 
     async def async_irrigate(
         self, zone: int | None, minutes: int = 1, *, close_zone: bool = False,
@@ -121,7 +89,7 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
                 raise HomeAssistantError(
                     "Unable to confirm irrigation command. Check Bluetooth and controller state "
                     "before retrying; the command has not been repeated."
-                ) from _redacted_exception(exc)
+                ) from exc
             except CancelledError:
                 # Cancellation can happen after the controller received a start.
                 self.async_set_update_error(UpdateFailed("Irrigation command cancelled; outcome unknown"))
