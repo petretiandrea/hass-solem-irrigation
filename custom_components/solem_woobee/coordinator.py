@@ -32,12 +32,17 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
         try:
             async with self._io_lock:
                 return await async_validate_device(self.hass, self.address)
-        except AuthenticationError as exc:
+        except AuthenticationError:
             # Fixed protocol key: no credentials a user can replace via reauth.
             # A fresh challenge on the next poll permits recovery without reload.
-            raise UpdateFailed("Controller authentication failed") from exc
-        except (ConnectivityError, InvalidResponseError, TimeoutError) as exc:
-            raise UpdateFailed("Unable to read controller snapshot") from exc
+            # Transport exceptions may contain addresses or other sensitive text.
+            raise UpdateFailed(
+                "Controller authentication failed; next poll opens a fresh session"
+            ) from None
+        except (ConnectivityError, InvalidResponseError, TimeoutError):
+            raise UpdateFailed(
+                "Unable to read controller snapshot; check Bluetooth reachability and response data"
+            ) from None
 
     async def async_irrigate(
         self, zone: int | None, minutes: int = 1, *, close_zone: bool = False,
@@ -80,12 +85,12 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
                             "The command may have been rejected or may still be taking effect; "
                             "check the device before sending another command."
                         )
-            except (AuthenticationError, ConnectivityError, InvalidResponseError, TimeoutError) as exc:
+            except (AuthenticationError, ConnectivityError, InvalidResponseError, TimeoutError):
                 self.async_set_update_error(UpdateFailed("Irrigation command outcome is unknown"))
                 raise HomeAssistantError(
                     "Unable to confirm irrigation command. Check Bluetooth and controller state "
                     "before retrying; the command has not been repeated."
-                ) from exc
+                ) from None
             except CancelledError:
                 # Cancellation can happen after the controller received a start.
                 self.async_set_update_error(UpdateFailed("Irrigation command cancelled; outcome unknown"))

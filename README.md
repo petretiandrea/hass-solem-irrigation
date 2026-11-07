@@ -329,3 +329,6 @@ Starts are rejected while any zone is active, commands are never automatically
 retried, and errors/unconfirmed results raise HA action errors. See
 [manual irrigation](docs/manual-irrigation.md) for examples, default persistence,
 consistency, compatibility and supervised hardware verification.
+
+Diagnostics, automated test evidence and the pending WB-4 hardware validation
+procedure are documented in [diagnostics and validation](docs/diagnostics-and-validation.md).
