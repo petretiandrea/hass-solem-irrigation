@@ -127,3 +127,22 @@ minimum-version suite emits pytest-socket warnings from HA Bluetooth setup;
 all tests pass without hardware/network access. CI pins compatible test plugins
 per HA version and runs the official hassfest action. Whole-client coverage and
 the remaining tier TODOs above are not implied by these adapter results.
+
+### CI correction: service target selector
+
+The initial numeric `supported_features: [1]` in services.yaml was not a valid
+HA target selector: metadata accepts named standard features, and button has no
+standard feature for this integration-specific start capability. Removed that UI
+filter; the registered entity action retains its runtime `required_features=[1]`
+guard, so targeting the controller stop button cannot start irrigation.
+`test_action_description_schema_and_stop_target` validates the YAML with HA's
+TargetSelector/field selector schemas and verifies stop-target rejection without
+opening a BLE session.
+
+Reproduced the original SERVICES schema error with the official hassfest source
+(Core f8cdb14), then ran the full validator successfully after the correction
+(1 integration, 0 invalid). Both supported HA versions pass 68 integration tests
+with the >95% per-module coverage gate (100% for all 12 adapter modules).
+Remote Actions/check visibility remains blocked by the GitHub App's 403 response;
+local hassfest success does not assert a remote CI result. Hardware and existing
+Quality Scale TODOs remain unchanged; no tier is claimed.

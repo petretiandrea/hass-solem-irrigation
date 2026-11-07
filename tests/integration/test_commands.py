@@ -1,12 +1,15 @@
 """Manual commands through HA services and a simulated WooBee client."""
 import asyncio
 from dataclasses import replace
+from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
 import voluptuous as vol
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.setup import async_setup_component
+from homeassistant.helpers.selector import TargetSelector, validate_selector
+from homeassistant.util.yaml import load_yaml_dict
 
 from custom_components.solem_woobee.services import MAX_MINUTES, valid_minutes
 from custom_components.solem_woobee.woobee_api import (
@@ -214,4 +217,25 @@ async def test_duration_action_routes_each_zone(hass, zone):
              "minutes": MAX_MINUTES}, blocking=True)
         client.start_valve.assert_awaited_once_with(zone, MAX_MINUTES)
         assert state(hass, "binary_sensor", f"zone_{zone}_irrigating").state == "on"
+        assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_action_description_schema_and_stop_target(hass):
+    """Validate UI metadata too: service calls alone don't validate services.yaml."""
+    description = load_yaml_dict(str(Path(__file__).parents[2] /
+        "custom_components/solem_woobee/services.yaml"))["start_irrigation"]
+    target = TargetSelector.CONFIG_SCHEMA(description["target"])
+    assert target["entity"] == [{"domain": ["button"], "integration": "solem_woobee"}]
+    assert validate_selector(description["fields"]["minutes"]["selector"])
+    with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()), patch(
+        "custom_components.solem_woobee.coordinator.connection_scope",
+    ) as connect:
+        entry = await setup(hass)
+        # The UI selector supports standard HA features only. Runtime capability
+        # validation must still prevent a stop button from being used to start.
+        with pytest.raises(HomeAssistantError):
+            await hass.services.async_call("solem_woobee", "start_irrigation",
+                {"entity_id": entity(hass, "button", "stop_all").entity_id,
+                 "minutes": 1}, blocking=True)
+        connect.assert_not_called()
         assert await hass.config_entries.async_unload(entry.entry_id)

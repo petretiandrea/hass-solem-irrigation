@@ -3,8 +3,6 @@ start_irrigation:
     entity:
       domain: button
       integration: solem_woobee
-      supported_features:
-        - 1
   fields:
     minutes:
       required: true
