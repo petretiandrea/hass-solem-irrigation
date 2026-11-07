@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Protocol
+
+from bleak import BleakClient, BleakScanner
+
+from .models import ControllerIdentity
+from .protocol import SolemSession, WOOBEE_V2_GATT, WooBeeV2
 from .transport import BLETransport
 
 
@@ -47,7 +52,6 @@ class WooBeeClient:
     @classmethod
     def local(cls) -> "WooBeeClient":
         """Build client using host Bluetooth adapter."""
-        from bleak import BleakClient, BleakScanner
 
         return cls(BleakScanner, BleakClient)
 
@@ -96,16 +100,12 @@ class WooBeeConnection:
     """
 
     def __init__(self, address: str, client_factory: ClientFactory) -> None:
-        from .models import ControllerIdentity
-
         self.identity = ControllerIdentity(address)
         self._factory = client_factory
         self._address = address
         self._session = None
 
     async def __aenter__(self):
-        from .protocol import SolemSession, WOOBEE_V2_GATT, WooBeeV2
-
         if self._session is not None:
             raise RuntimeError("connection scope cannot be reused")
         self._session = SolemSession(self._factory(self._address), WOOBEE_V2_GATT,

@@ -4,13 +4,13 @@ import ast
 from pathlib import Path
 import unittest
 
-from custom_components.solem_woobee.woobee_api import (
+from woobee_api import (
     AuthenticationError, ConnectivityError, InvalidResponseError,
     SessionTimeoutError, SolemSession, WOOBEE_V2_GATT, WooBeeV2,
     WooBeeConnection, ControllerIdentity,
 )
-from custom_components.solem_woobee.woobee_api.protocol import ctr_crypt, ecb_encrypt
-from custom_components.solem_woobee.woobee_api.responses import parse_status
+from woobee_api.protocol import ctr_crypt, ecb_encrypt
+from woobee_api.responses import parse_status
 
 API = Path(__file__).parents[1] / 'custom_components/solem_woobee/woobee_api'
 NONCE = bytes(range(16))

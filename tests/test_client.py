@@ -1,9 +1,9 @@
 import unittest
 from datetime import date, datetime
 
-from custom_components.solem_woobee.woobee_api import ControllerBackup, SolemGatt, SolemSession, WOOBEE_V2_GATT, WooBeeClient, WooBeeV2
-from custom_components.solem_woobee.woobee_api.protocol import ctr_crypt
-from custom_components.solem_woobee.woobee_api.programs import (
+from woobee_api import ControllerBackup, SolemGatt, SolemSession, WOOBEE_V2_GATT, WooBeeClient, WooBeeV2
+from woobee_api.protocol import ctr_crypt
+from woobee_api.programs import (
     Days,
     IrrigationProgram,
     ProgramCycle,
@@ -14,7 +14,7 @@ from custom_components.solem_woobee.woobee_api.programs import (
     build_program_frames,
     parse_program_replies,
 )
-from custom_components.solem_woobee.woobee_api.responses import parse_device_info, parse_state
+from woobee_api.responses import parse_device_info, parse_state
 
 
 class Characteristic:

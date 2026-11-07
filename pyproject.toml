@@ -4,14 +4,19 @@ build-backend = "hatchling.build"
 
 [project]
 name = "solem-woobee"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Embedded asynchronous BLE client for SOLEM WooBee controllers"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = ["bleak>=0.22", "cryptography>=42"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 
 
 [tool.hatch.build.targets.wheel]
-packages = ["custom_components"]
+packages = ["custom_components/solem_woobee/woobee_api"]
+
+[tool.hatch.version]
+path = "custom_components/solem_woobee/manifest.json"
+pattern = '"version": "(?P<version>[^\"]+)"'

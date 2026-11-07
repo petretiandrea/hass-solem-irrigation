@@ -7,16 +7,27 @@ Every command frame below is recovered statically from the APK's
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
 from contextlib import asynccontextmanager
-from functools import wraps
-
-from .transport import BLETransport
-
-from .errors import (AuthenticationError, ConnectivityError, InvalidResponseError,
-                     SessionTimeoutError, WooBeeError)
+from dataclasses import dataclass
 from datetime import datetime
+from functools import wraps
 from uuid import UUID
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+from .errors import (
+    AuthenticationError, ConnectivityError, InvalidResponseError,
+    SessionTimeoutError, WooBeeError,
+)
+from .programs import (
+    ControllerBackup, IrrigationProgram, Schedule,
+    build_program_frames, parse_program_replies,
+)
+from .responses import (
+    WooBeeDeviceInfo, WooBeeState, WooBeeStatus, WooBeeValveFaults,
+    parse_device_info, parse_state, parse_status, parse_valve_faults,
+)
+from .transport import BLETransport
 
 # `BleManager.isAlreadyAuthenticatedLiteral()` compares this exact byte sequence.
 AUTHENTICATED = {b"AUTHENTICATED\x00"}
@@ -64,7 +75,6 @@ class SolemGatt:
 def ecb_encrypt(challenge: bytes, key: bytes) -> bytes:
     if len(challenge) % 16:
         raise ValueError("SOLEM auth challenge must be AES block aligned")
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
     return Cipher(algorithms.AES(key), modes.ECB()).encryptor().update(challenge)
 
@@ -72,7 +82,6 @@ def ecb_encrypt(challenge: bytes, key: bytes) -> bytes:
 def ctr_crypt(payload: bytes, key: bytes, nonce: bytes) -> bytes:
     if len(nonce) != 16:
         raise ValueError("SOLEM nonce must be 16 bytes")
-    from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
     return Cipher(algorithms.AES(key), modes.CTR(nonce)).encryptor().update(payload)
 
@@ -375,14 +384,12 @@ class WooBeeV2:
     @serialized
     async def read_state(self) -> "WooBeeState":
         """Return readable WB-4 state, parsed from MySOLEM Java logic."""
-        from .responses import parse_state
 
         return parse_state(await self.read_state_raw())
 
     @serialized
     async def read_device_info(self) -> "WooBeeDeviceInfo":
         """Read name, serial, hardware, firmware and controller UUID."""
-        from .responses import parse_device_info
 
         identity = await self._session.exchange_all(b"\x0f\x00")
         uuid = [await self._session.exchange(b"\xe3\x00")]
@@ -400,7 +407,6 @@ class WooBeeV2:
     @serialized
     async def _command_status(self, frame: bytes) -> "WooBeeStatus":
         # `manageAnswer()`: CMD_MANUAL_V5 → statusAnswerV5().
-        from .responses import parse_status
 
         return parse_status(await self._session.exchange_all(frame))
 
@@ -428,7 +434,6 @@ class WooBeeV2:
     @serialized
     async def reset_valve_faults(self) -> "WooBeeValveFaults":
         """Clear latched valve fault bits and return controller acknowledgement."""
-        from .responses import parse_valve_faults
 
         return parse_valve_faults((await self._session.exchange_all(self.reset_valve_faults_frame()))[-1])
 
@@ -440,27 +445,22 @@ class WooBeeV2:
     @serialized
     async def read_programs(self) -> tuple["IrrigationProgram", ...]:
         """Read and parse programs using MySOLEM `readConfigAnswerV5()` layout."""
-        from .programs import parse_program_replies
 
         return parse_program_replies(await self.read_programs_raw())
 
     @serialized
     async def read_schedules(self) -> tuple["Schedule", ...]:
-        from .programs import Schedule
-
         return tuple(Schedule.from_program(program) for program in await self.read_programs())
 
     @serialized
     async def backup(self) -> "ControllerBackup":
         """Read all schedule data into portable client backup."""
-        from .programs import ControllerBackup
 
         return ControllerBackup(await self.read_schedules())
 
     @serialized
     async def write_program(self, program: "IrrigationProgram") -> list[list[bytes]]:
         """Persist one schedule using MySOLEM `configIrriV5()` frame sequence."""
-        from .programs import build_program_frames
 
         return [await self._session.exchange_all(frame) for frame in build_program_frames(program)]
 

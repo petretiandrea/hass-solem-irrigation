@@ -8,7 +8,7 @@ import asyncio
 
 from bleak import BleakClient
 
-from custom_components.solem_woobee.woobee_api import SolemSession, WOOBEE_V2_GATT
+from woobee_api import SolemSession, WOOBEE_V2_GATT
 
 
 async def main() -> None:

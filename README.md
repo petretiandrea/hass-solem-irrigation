@@ -9,7 +9,7 @@ python scripts/inspect_woobee.py
 
 ```python
 import asyncio
-from custom_components.solem_woobee.woobee_api import WooBeeClient
+from woobee_api import WooBeeClient
 
 async def main():
     client = WooBeeClient.local()
@@ -32,7 +32,7 @@ and response payloads use AES-CTR with that challenge as nonce.
 
 ```python
 from bleak import BleakClient
-from custom_components.solem_woobee.woobee_api import SolemSession, WOOBEE_V2_GATT
+from woobee_api import SolemSession, WOOBEE_V2_GATT
 
 async with BleakClient("AA:BB:CC:DD:EE:FF") as client:
     async with SolemSession(client, WOOBEE_V2_GATT) as session:
@@ -84,7 +84,7 @@ controller UUID. No persistent controller state changes.
 modifica memoria persistente controller; non viene esposto da CLI.
 
 ```python
-from custom_components.solem_woobee.woobee_api import Days, ProgramCycle, Schedule, TimeOfDay, ZoneDurations
+from woobee_api import Days, ProgramCycle, Schedule, TimeOfDay, ZoneDurations
 
 schedule = Schedule(
     number=1,
@@ -110,7 +110,7 @@ every schedule present in JSON.
 
 ```python
 from pathlib import Path
-from custom_components.solem_woobee.woobee_api import ControllerBackup
+from woobee_api import ControllerBackup
 
 backup = await woobee.backup()
 Path("wb4-backup.json").write_text(backup.to_json())
@@ -146,12 +146,13 @@ The client now lives in `custom_components/solem_woobee/woobee_api`, following
 hass-sorgenia's embedded API layout. Update imports from the former root
 `solem_woobee` package. It has no Home Assistant imports, including type-only
 imports, and is shipped with the integration; no PyPI release is planned.
-The standalone client needs Python 3.11+, the integration targets HA 2026.8.0+
-(Python 3.14). CI runs the client on both Python versions without HA installed.
+Both the standalone client and the integration require Python 3.14+. The
+integration targets HA 2026.8.0+. CI uses Python 3.14 from `.python-version`
+for all jobs and tests the client without HA installed.
 
 ```python
 from bleak import BleakClient
-from custom_components.solem_woobee.woobee_api import WooBeeConnection
+from woobee_api import WooBeeConnection
 
 async with WooBeeConnection("AA:BB:CC:DD:EE:FF", BleakClient) as api:
     state = await api.read_state()
@@ -203,3 +204,32 @@ Tests use synthetic BLE transports and anonymous response fixtures. No credentia
 or controller-specific secrets are required. Hardware behavior, battery scale,
 polling cadence and Bluetooth proxy behavior still need device validation; tests
 never connect to hardware or actuate valves.
+
+## Home Assistant configuration
+
+The integration domain is `solem_woobee` (Home Assistant 2026.8.0+, Python
+3.14). Copy `custom_components/solem_woobee` to the HA configuration directory,
+restart, and add **SOLEM WooBee** from Devices & services. Select the WooBee V2 /
+WB-4 visible to Home Assistant Bluetooth. Automatic discovery is deferred until
+an advertisement matcher is verified; unrelated Bluetooth devices can appear
+in the selector and will fail protocol validation.
+
+Setup authenticates and reads identity and state, without changing irrigation.
+The BLE challenge uses the protocol's built-in key: no account, password or
+credential reauthentication is available. Timeouts indicate connectivity
+failure, not confirmed credential rejection. Each normalized BLE address can
+be configured once. Connections and notifications are released after each
+validation; unavailable controllers retry setup through Home Assistant.
+
+This initial skeleton does not expose entities or start background polling;
+those are implemented in SBR-92 and SBR-93. The client is embedded, not fetched
+from PyPI, and shares the integration version in `manifest.json`.
+
+Integration tests: install `requirements_test.txt` and run
+`python -m pytest tests/integration -q`. The existing client tests continue to
+run with `python -m unittest discover -s tests -v`, without Home Assistant.
+
+The local client wheel exposes `woobee_api` directly, so CLI tools and client
+tests do not load the Home Assistant integration package. HACS still installs
+the client at `custom_components/solem_woobee/woobee_api`; integration modules
+use relative imports. All Python imports stay at module top level.
