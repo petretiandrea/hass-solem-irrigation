@@ -53,18 +53,30 @@
       }
     },
     "button": {
-      "start_zone": {
-        "name": "Start zone {zone} (1 minute)"
-      },
       "stop_all": {
         "name": "Stop all irrigation"
+      }
+    },
+    "valve": {
+      "zone": {
+        "name": "Zone {zone}"
       }
     }
   },
   "services": {
     "start_irrigation": {
       "name": "Start irrigation",
-      "description": "Start one zone for a whole number of minutes. Stop any active irrigation first.",
+      "description": "Start one valve for a whole number of minutes. Stop any active irrigation first.",
+      "fields": {
+        "minutes": {
+          "name": "Minutes",
+          "description": "Whole duration in minutes (1–279620)."
+        }
+      }
+    },
+    "set_default_duration": {
+      "name": "Set default duration",
+      "description": "Set this zone’s default opening duration in HA without starting irrigation or changing controller programs.",
       "fields": {
         "minutes": {
           "name": "Minutes",

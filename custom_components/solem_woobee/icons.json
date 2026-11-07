@@ -17,12 +17,17 @@
       }
     },
     "button": {
-      "start_zone": {
-        "default": "mdi:sprinkler"
-      },
       "stop_all": {
         "default": "mdi:stop-circle"
       }
+    }
+  },
+  "services": {
+    "start_irrigation": {
+      "service": "mdi:sprinkler"
+    },
+    "set_default_duration": {
+      "service": "mdi:timer-cog"
     }
   }
 }

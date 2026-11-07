@@ -5,8 +5,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import WooBeeCoordinator
 from .data import WooBeeConfigEntry
-from .entity import WooBeeEntity, WooBeeZoneEntity
-from .services import valid_minutes
+from .entity import WooBeeEntity
 from .woobee_api import ControllerIdentity
 
 PARALLEL_UPDATES = 0  # Coordinator serializes all controller BLE sessions.
@@ -15,28 +14,7 @@ PARALLEL_UPDATES = 0  # Coordinator serializes all controller BLE sessions.
 async def async_setup_entry(
     hass: HomeAssistant, entry: WooBeeConfigEntry, async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([
-        *(WooBeeStartButton(entry.runtime_data, zone) for zone in range(1, 5)),
-        WooBeeStopButton(entry.runtime_data),
-    ])
-
-
-class WooBeeStartButton(WooBeeZoneEntity, ButtonEntity):
-    """Start a timed run; press uses one minute, entity action accepts duration."""
-
-    _attr_translation_key = "start_zone"
-    _attr_supported_features = 1
-
-    def __init__(self, coordinator: WooBeeCoordinator, zone: int) -> None:
-        super().__init__(coordinator, zone)
-        self._attr_unique_id += "_start"
-        self._attr_translation_placeholders = {"zone": str(zone)}
-
-    async def async_press(self) -> None:
-        await self.async_start_irrigation(1)
-
-    async def async_start_irrigation(self, minutes: int) -> None:
-        await self.coordinator.async_irrigate(self.zone, valid_minutes(minutes))
+    async_add_entities([WooBeeStopButton(entry.runtime_data)])
 
 
 class WooBeeStopButton(WooBeeEntity, ButtonEntity):

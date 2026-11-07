@@ -53,18 +53,30 @@
       }
     },
     "button": {
-      "start_zone": {
-        "name": "Avvia zona {zone} (1 minuto)"
-      },
       "stop_all": {
         "name": "Arresta tutta l’irrigazione"
+      }
+    },
+    "valve": {
+      "zone": {
+        "name": "Zona {zone}"
       }
     }
   },
   "services": {
     "start_irrigation": {
       "name": "Avvia irrigazione",
-      "description": "Avvia una zona per un numero intero di minuti. Arrestare prima eventuale irrigazione attiva.",
+      "description": "Avvia una valvola per un numero intero di minuti. Arrestare prima eventuale irrigazione attiva.",
+      "fields": {
+        "minutes": {
+          "name": "Minuti",
+          "description": "Durata intera in minuti (1–279620)."
+        }
+      }
+    },
+    "set_default_duration": {
+      "name": "Imposta durata predefinita",
+      "description": "Imposta la durata di apertura della zona in HA, senza avviare irrigazione o modificare programmi.",
       "fields": {
         "minutes": {
           "name": "Minuti",

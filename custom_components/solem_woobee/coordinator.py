@@ -39,11 +39,14 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
         except (ConnectivityError, InvalidResponseError, TimeoutError) as exc:
             raise UpdateFailed("Unable to read controller snapshot") from exc
 
-    async def async_irrigate(self, zone: int | None, minutes: int = 1) -> None:
+    async def async_irrigate(
+        self, zone: int | None, minutes: int = 1, *, close_zone: bool = False,
+    ) -> None:
         """Send once and publish observed state, serializing against reads.
 
         None means controller-wide stop. Starts never implicitly replace an
-        active zone, including itself. Re-read immediately before every start.
+        active zone, including itself. With close_zone, stop only if the fresh
+        active zone matches; an idle/different zone is a read-only no-op.
         """
         if zone is not None:
             try:
@@ -56,18 +59,22 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
                     if zone is not None:
                         before = await client.read_state()
                         self.async_set_updated_data(replace(self.data, state=before))
-                        if before.status.active_zone is not None:
+                        if close_zone:
+                            if before.status.active_zone != zone:
+                                return
+                        elif before.status.active_zone is not None:
                             raise ServiceValidationError(
                                 "Irrigation is already active. Stop all irrigation before starting a zone."
                             )
-                    if zone is None:
+                    if zone is None or close_zone:
                         await client.stop()
                     else:
                         await client.start_valve(zone, minutes)
                     # A write or command reply alone is not success. Never resend.
                     after = await client.read_state()
                     self.async_set_updated_data(replace(self.data, state=after))
-                    if after.status.active_zone != zone:
+                    expected_zone = None if close_zone else zone
+                    if after.status.active_zone != expected_zone:
                         raise HomeAssistantError(
                             "The controller did not confirm the requested irrigation state. "
                             "The command may have been rejected or may still be taking effect; "

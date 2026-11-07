@@ -6,7 +6,7 @@ rules:
     comment: Entity action registered during async_setup with schema and services.yaml; test_commands.py verifies routing.
   docs-actions:
     status: done
-    comment: docs/manual-irrigation.md documents duration action and global stop semantics, examples and errors.
+    comment: docs/manual-irrigation.md documents valve actions, saved defaults, conditional close and global stop, examples and errors.
   docs-conditions:
     status: exempt
     comment: No custom trigger or condition platforms are exposed. Manual command action documented separately.
@@ -67,7 +67,7 @@ rules:
   has-entity-name:
     status: done
     comment: All read entities inherit has_entity_name and use translated names with zone placeholders;
-      actual HA names tested in English and Italian, including command buttons.
+      actual HA names tested in English and Italian, including zone valves and global stop button.
   test-before-setup:
     status: done
     comment: async_config_entry_first_refresh completes before registry and platform setup; failures retry
@@ -84,11 +84,11 @@ rules:
   docs-configuration-parameters:
     status: done
     comment: README.md documents BLE address selection, HA/Python prerequisites and Bluetooth reachability;
-      no user credentials required.
+      no user credentials required. Per-zone local duration defaults documented in docs/manual-irrigation.md.
   docs-installation-parameters:
     status: done
     comment: README.md documents BLE address selection, HA/Python prerequisites and Bluetooth reachability;
-      no user credentials required.
+      no user credentials required. Per-zone local duration defaults documented in docs/manual-irrigation.md.
   entity-unavailable:
     status: done
     comment: Real HA state tests cover unknown partial durations, reported zero, unavailable state on
@@ -106,7 +106,7 @@ rules:
       BLE connection. Rejection is retried with a new session.'
   test-coverage:
     status: todo
-    comment: HA wrapper modules including read platforms gated above 95% per module. Embedded client modules
+    comment: HA wrapper modules including valve and read platforms gated above 95% per module. Embedded client modules
       need complete coverage assessment; wrapper results alone do not meet the whole-integration rule.
   devices:
     status: done
@@ -155,10 +155,10 @@ rules:
   entity-category:
     status: done
     comment: Connectivity, clock/input flags, valve faults and raw battery are diagnostic. Operational
-      status remains uncategorized; momentary commands are operational buttons; no writable configuration entities.
+      status remains uncategorized; zone valves and global stop are operational; duration defaults are local HA options.
   entity-device-class:
     status: done
-    comment: Duration in seconds, running activity, problem flags and read connectivity tested. Unscaled
+    comment: Water valves, duration in seconds, running activity, problem flags and read connectivity tested. Unscaled
       battery has no fabricated class, unit or statistics.
   entity-disabled-by-default:
     status: done
@@ -166,7 +166,7 @@ rules:
       and explicit enable/reload. Other exposed fields are operationally useful.
   entity-translations:
     status: done
-    comment: strings.json and en/it translations cover read entities and command buttons and zone placeholders; actual
+    comment: strings.json and en/it translations cover read entities and zone valves and global stop button and zone placeholders; actual
       HA names verified in both languages.
   icon-translations:
     status: done

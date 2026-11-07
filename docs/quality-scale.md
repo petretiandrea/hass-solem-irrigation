@@ -96,53 +96,48 @@ embedded-client coverage and remaining checklist items still prevent a tier clai
 
 ## SBR-94 manual commands
 
-Button platform selected because start is timed and stop affects the whole
-controller; no invented per-zone stop or retained switch state. See
-`docs/manual-irrigation.md` for protocol mappings, duration units/wire limits,
-examples, error semantics, external-client races and supervised hardware steps.
-The Sorgenia template's platform separation, shared coordinator, stable entity
-identity and translations are retained.
+Four water valves expose OPEN/CLOSE with controller-reported open/closed state,
+without position or motion controls. Timed opening uses a per-zone default saved
+in HA options (initially one minute); an entity action can override a single run.
+Conditional close reads fresh state under the shared command/poll lock and sends
+the global stop only for the active target zone. Idle/different zone closure is a
+read-only no-op. An explicit controller-wide stop button remains available.
+The external-client race between read and global stop is documented rather than
+claiming an atomic per-zone protocol capability.
 
-Affected rules: action-setup/docs-actions (entity action registered during integration setup with schema and services.yaml), action-exceptions (validation errors,
-transport/auth/timeout/invalid-response failures and unconfirmed state),
-parallel-updates (one coordinator lock across polling/commands), and entity
-lifecycle/identity/device/name/translations/icons/availability. Evidence:
-`tests/integration/test_commands.py` plus the existing platform/lifecycle tests.
-No optimistic success or automatic command retries; post-command reads publish
-actual reported state. An ambiguous command failure requires state verification
-before a user retries. No confirmed API rejection code or settling interval is
-invented. Exception translations remain TODO for Gold.
+Affected rules and evidence:
+- action-setup/docs-actions: actions registered during integration async_setup;
+  schema/services.yaml and HA selector validation tested. Manual-irrigation docs
+  include units, limits, defaults/persistence, examples and guarded-close behavior.
+- action-exceptions/parallel-updates: simulated client tests cover validation,
+  conflicts, conditional/global stop, transport/auth/timeout/invalid responses,
+  mismatched outcomes, cancellation and polling serialization. No optimistic
+  success or command retries; failed commands surface HA errors.
+- entity naming/unique IDs/devices/device classes/translations/availability:
+  actual HA states, water class, supported flags, en/it names, shared controller,
+  reload/unload, disabled raw sensor and failure/recovery tests include valves.
+- entity-event-setup/config-entry-unloading/test-coverage: actual entity listeners
+  own polling; lifecycle tests cover teardown. The per-module adapter coverage
+  gate includes valve.py and services.py. No whole-client coverage claim.
+- docs-configuration-parameters: per-zone local default duration documented, with
+  persistence and temporary overrides tested. No controller program writes.
 
-The adapter coverage gate includes button.py automatically. Hardware procedure
-is documented but has not been executed; firmware latency, physical valve
-behavior, maximum practical duration and battery impact remain unverified.
-Existing branding, client provenance, whole-client coverage, diagnostics and
-strict typing TODOs remain. No Quality Scale tier is claimed.
+`docs/manual-irrigation.md` records supervised hardware verification and migration
+from the earlier PR's start buttons to valves. No hardware tests have been run;
+firmware latency, physical behavior, maximum practical duration and battery
+impact remain unverified. Existing branding, dependency provenance, whole-client
+coverage, diagnostics, exception translations and strict typing TODOs remain.
+No Quality Scale tier is claimed.
 
-Validation for SBR-94: Python 3.14.10; 34 client unittests; 67 integration tests
-on each of HA 2026.8.0 / pytest plugin 0.13.354 and HA 2026.10.4 / plugin
-0.13.375. Per-module line/branch coverage is 100% for all 12 adapter modules;
-`check_ha_coverage.py`, compileall and git diff whitespace checks pass. The
-minimum-version suite emits pytest-socket warnings from HA Bluetooth setup;
-all tests pass without hardware/network access. CI pins compatible test plugins
-per HA version and runs the official hassfest action. Whole-client coverage and
-the remaining tier TODOs above are not implied by these adapter results.
+Official sources reviewed: valve entity, integration actions and Quality Scale
+contributor documentation. HA target-selector metadata is validated with HA's
+schema, including a regression against the earlier invalid numeric feature
+filter. Official hassfest is also run locally; remote checks may remain unreadable
+to the GitHub App (403), so local success does not assert a remote CI result.
 
-### CI correction: service target selector
-
-The initial numeric `supported_features: [1]` in services.yaml was not a valid
-HA target selector: metadata accepts named standard features, and button has no
-standard feature for this integration-specific start capability. Removed that UI
-filter; the registered entity action retains its runtime `required_features=[1]`
-guard, so targeting the controller stop button cannot start irrigation.
-`test_action_description_schema_and_stop_target` validates the YAML with HA's
-TargetSelector/field selector schemas and verifies stop-target rejection without
-opening a BLE session.
-
-Reproduced the original SERVICES schema error with the official hassfest source
-(Core f8cdb14), then ran the full validator successfully after the correction
-(1 integration, 0 invalid). Both supported HA versions pass 68 integration tests
-with the >95% per-module coverage gate (100% for all 12 adapter modules).
-Remote Actions/check visibility remains blocked by the GitHub App's 403 response;
-local hassfest success does not assert a remote CI result. Hardware and existing
-Quality Scale TODOs remain unchanged; no tier is claimed.
+Valve-platform validation: Python 3.14.10, 77 integration tests passed on each
+of HA 2026.8.0/plugin 0.13.354 and HA 2026.10.4/plugin 0.13.375. Line/branch
+coverage is 100% in each of 13 adapter modules, and the >95% per-module gate
+passes. All 34 client unittests, compileall and git diff --check pass. The full
+official hassfest validator (Core f8cdb14) reports 1 integration, 0 invalid.
+HA 2026.8.0 emits pytest-socket warnings from Bluetooth setup without failures.
