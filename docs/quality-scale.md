@@ -339,3 +339,12 @@ wheel/sdist marker/module verification and git diff --check pass. The whole-clie
 coverage gap remains explicitly outside this issue; the integration-only overall
 coverage measurement is not a whole-integration coverage claim. No hardware,
 fresh-install, HACS-download or official tier validation is asserted.
+
+Publication/access limitation for SBR-103: Git push is available, but `gh auth
+status` reports no authenticated GitHub host and `gh pr create` exits requesting
+login/GH_TOKEN. The Git credential helper also supplies no API credential, and
+no GitHub API connector is exposed in this session. The implementation branch
+is pushed; PR creation and remote Actions/HACS/hassfest status verification
+require working GitHub API access. Local validation above must not be read as a
+claim that those remote jobs passed. No rule exemption or tier is inferred from
+this access limitation.
