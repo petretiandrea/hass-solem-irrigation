@@ -27,9 +27,9 @@ and hardware command-platform behavior remains to be verified. The embedded
 client is an intentional custom-integration architecture decision, not a claimed
 exemption from Core distribution requirements.
 
-Silver is not claimed: the HA adapter coverage gate excludes `woobee_api`, whose
-unit tests run separately. The whole-integration coverage requirement remains
-TODO until every embedded module is assessed along with the final platforms.
+Silver is not claimed: branding and dependency provenance TODOs remain. SBR-99
+now measures and gates every shipped module using combined standalone and HA
+tests; exact results and reproducible commands are recorded below.
 Command errors are covered by SBR-94 simulations. Read platforms
 explicitly declare parallel update behavior. Fixed-key BLE has no user credentials or reauthentication flow; that
 exemption is documented rather than inventing a cloud login.
@@ -44,8 +44,8 @@ or BLE limit. Hardware tests are still needed for battery impact and freshness.
 Use the project's Python 3.14 environment:
 
 ```bash
-python -m unittest discover -s tests -v
-python -m pytest tests/integration -q --cov=custom_components.solem_woobee --cov-branch --cov-report=term-missing --cov-report=json
+python -m coverage run --branch --source=custom_components/solem_woobee -m unittest discover -s tests -v
+python -m pytest tests/integration -q --cov=custom_components.solem_woobee --cov-branch --cov-append --cov-report=term-missing --cov-report=json
 python scripts/check_ha_coverage.py
 python -m compileall -q custom_components scripts tests
 ```
@@ -90,9 +90,10 @@ Sources:
 - https://contributors.home-assistant.io/core/quality-scale/icon-translations/
 - https://contributors.home-assistant.io/core/quality-scale/log-when-unavailable/
 
-The checklist records these rules individually. The adapter coverage gate does
-not establish whole-integration Silver compliance; branding, library provenance,
-embedded-client coverage and remaining checklist items still prevent a tier claim.
+The checklist records these rules individually. The historical adapter-only
+measurements do not establish Silver compliance.
+SBR-99 replaces that coverage gate; branding, library provenance and remaining
+checklist items still prevent a tier claim.
 
 ## SBR-94 manual commands
 
@@ -271,3 +272,70 @@ missing source license; GitHub/HACS detection must be confirmed after merge.
 Repository description/topics still require administration permission (prior API
 attempts returned HTTP 403). Dependency/protocol provenance and the remaining
 Quality Scale TODOs remain open; no tier is claimed. No release is published.
+
+## SBR-99 combined shipped-module coverage
+
+Measured on 2026-11-07 using Python 3.14.10, based on current main
+`f1902d36aee6dfa59233c1d4572b35d8d720e038` plus this PR. Both matrix
+pairs passed: HA 2026.8.0 / pytest plugin 0.13.354 and HA 2026.10.4 /
+pytest plugin 0.13.375. Each ran 55 standalone unittest tests and 99 HA
+tests.
+Coverage versions were 7.15.2 and 7.16.2 respectively; pytest-cov was 7.1.0.
+The older HA target emits 54 dependency deprecation warnings; no test failures.
+
+The commands in Validation start a fresh branch measurement with unittest,
+then append HA execution into that same measurement before reporting/gating.
+CI repeats this independently for each matrix pair. The filesystem source root
+includes unexecuted modules; the gate derives its expected inventory recursively
+from all shipped integration `.py` files and rejects absent entries. It checks
+unrounded line and branch ratios separately (>95% each), plus 100% for both
+config-flow modules. No module exclusions or average-based acceptance apply.
+Gate tests explicitly reject missing entries, zero execution, absent branch
+measurement, exactly 95% in either metric and incomplete config-flow coverage.
+
+All measured modules are listed below, relative to `custom_components/solem_woobee/`.
+Every nonzero branch denominator has 100% coverage. `0/0` means no executable
+branches (accepted as vacuously complete), including the transport Protocol's
+method declarations; this does not simulate or prove a physical BLE backend.
+
+| Module | 2026.8.0 lines | 2026.8.0 branches | 2026.10.4 lines | 2026.10.4 branches |
+| --- | --- | --- | --- | --- |
+| `__init__.py` | 26/26 (100%) | 2/2 | 26/26 (100%) | 2/2 |
+| `binary_sensor.py` | 37/37 (100%) | 4/4 | 37/37 (100%) | 4/4 |
+| `button.py` | 17/17 (100%) | 0/0 | 17/17 (100%) | 0/0 |
+| `config_flow.py` | 2/2 (100%) | 0/0 | 2/2 (100%) | 0/0 |
+| `config_flow_handler/__init__.py` | 30/30 (100%) | 4/4 | 30/30 (100%) | 4/4 |
+| `connection.py` | 16/16 (100%) | 2/2 | 16/16 (100%) | 2/2 |
+| `const.py` | 1/1 (100%) | 0/0 | 1/1 (100%) | 0/0 |
+| `coordinator.py` | 59/59 (100%) | 14/14 | 59/59 (100%) | 14/14 |
+| `data.py` | 7/7 (100%) | 0/0 | 7/7 (100%) | 0/0 |
+| `diagnostics.py` | 12/12 (100%) | 2/2 | 12/12 (100%) | 2/2 |
+| `entity.py` | 24/24 (100%) | 2/2 | 24/24 (100%) | 2/2 |
+| `sensor.py` | 30/30 (100%) | 0/0 | 30/30 (100%) | 0/0 |
+| `services.py` | 13/13 (100%) | 2/2 | 13/13 (100%) | 2/2 |
+| `valve.py` | 39/39 (100%) | 0/0 | 39/39 (100%) | 0/0 |
+| `woobee_api/__init__.py` | 9/9 (100%) | 0/0 | 9/9 (100%) | 0/0 |
+| `woobee_api/client.py` | 68/68 (100%) | 8/8 | 68/68 (100%) | 8/8 |
+| `woobee_api/errors.py` | 5/5 (100%) | 0/0 | 5/5 (100%) | 0/0 |
+| `woobee_api/models.py` | 29/29 (100%) | 4/4 | 29/29 (100%) | 4/4 |
+| `woobee_api/programs.py` | 186/186 (100%) | 58/58 | 186/186 (100%) | 58/58 |
+| `woobee_api/protocol.py` | 318/318 (100%) | 82/82 | 318/318 (100%) | 82/82 |
+| `woobee_api/responses.py` | 96/96 (100%) | 32/32 | 96/96 (100%) | 32/32 |
+| `woobee_api/transport.py` | 2/2 (100%) | 0/0 | 2/2 (100%) | 0/0 |
+
+New evidence: `tests/test_coverage_paths.py` covers malformed identity/state/
+program responses, incomplete zone pages preserving None, backup validation,
+schedule boundaries, discovery delegation, inspection read failures, managed
+scope reuse, and simulated command/backup/restore frame delegation.
+`tests/test_session.py` adds authentication cancellation/idempotence, unknown
+acknowledgements, read/write failures, connect timeout, empty/overflow/wrong/
+excess response pages, and cleanup errors preserving the primary failure.
+These augment the existing simulated BLE suite and retained HA state, action,
+registry, availability, polling and unload tests. Ruff, distribution validation
+and compileall also passed.
+
+Only the test-coverage gap is closed here. No hardware was accessed or commands
+sent to a controller. Automated simulation does not establish hardware behavior,
+battery impact, clean-install acceptance or an official quality tier. Other
+checklist TODOs remain. No external access/evidence blocker remains for SBR-99's
+automated coverage acceptance; physical evidence belongs to the separate review.
