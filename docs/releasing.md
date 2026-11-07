@@ -115,3 +115,41 @@ consistent with hass-sorgenia. Confirm GitHub recognizes it after merge.
 Do not add license, description or topics to HACS `ignore` to obtain a green job.
 After applying settings and merging the approved license, rerun HACS on the
 candidate branch and inspect the result. No tag or release is required.
+
+## Reproducible revision acceptance
+
+Use [SBR-104](acceptance-SBR-104.md) as a revision-bound example, including its
+execution blockers. A report must identify the tested SHA separately from the
+report commit. Record UTC date, tester, manifest version, OS and architecture,
+`git status --short`, `git rev-parse HEAD`, `python --version`,
+`python -m pip freeze` and each command's exit status. Preserve sanitized logs
+and coverage JSON with the report. Dependency ranges are not a lockfile: retain
+the resolved freeze for each environment. Missing tools/access mean “not
+executed” or “unknown”, never pass.
+
+Use a clean checkout of the candidate SHA and separate virtual environments for
+the standalone client and each HA/plugin pair. Run the client commands above
+before installing HA, and confirm `python -m pip show homeassistant` reports
+not installed. For each HA pair, create another fresh environment, install
+`-e . -r requirements_test.txt` with the exact HA/plugin pins above, then run
+pytest, the coverage gate and compileall. Archive that target's coverage.json
+before starting the other target so results are not overwritten. Run
+`python -m pip check` in each environment and record failures. Test fixtures
+exercise real HA internals with simulated BLE; this is not a fresh UI install.
+
+Inspect CI jobs for the exact candidate SHA, not merely the latest green main:
+
+`gh run list --commit <candidate-sha> --json databaseId,headSha,status,conclusion,url,name`
+
+Record individual job conclusions/URLs, including both HA targets, hassfest and
+HACS (with its explicit brands ignore). If authentication or Actions permission
+is unavailable, record the error and leave remote CI unknown. Historical local
+hassfest results are not a current remote result.
+
+For source-install acceptance, start with a disposable HA configuration and no
+existing WooBee entries or registry records. Record each supported HA target
+separately. Copy the candidate component tree, verify the manifest and embedded
+client, then follow the installation-facing and WB-4 checks in the diagnostics
+procedure. UI, HACS download, restart persistence and physical observations need
+separate results; unit tests cannot tick those boxes. This procedure grants no
+release or controller-write authorization.

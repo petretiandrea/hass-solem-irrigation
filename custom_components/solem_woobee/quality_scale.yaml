@@ -1,5 +1,6 @@
 # Project checklist only: no official tier is claimed.
 # Evidence and remaining work: docs/quality-scale.md
+# Revision-bound review and execution blockers: docs/acceptance-SBR-104.md
 rules:
   action-setup:
     status: done

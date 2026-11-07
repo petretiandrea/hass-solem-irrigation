@@ -91,3 +91,40 @@ remain pending. Fill a separate report table after supervised execution:
 | Step | Expected | Observed | Simulated or hardware | Result/date |
 | --- | --- | --- | --- | --- |
 | 1–6 | As above | Not executed | Hardware pending | Pending |
+
+## Revision-bound operator evidence
+
+[Current independent report](acceptance-SBR-104.md) distinguishes source review,
+historical simulations and unexecuted installation/hardware checks. Submit
+observations only for an identified SHA; an implementation follow-up owns its
+new tests and evidence. Do not carry a pass forward to another revision.
+
+Use this record for each step above; leave unobserved fields pending. Anonymous
+labels are sufficient; do not publish hardware addresses or raw BLE backups.
+Read-only observations may be supplied independently. Commands still require
+explicit authorization for the particular operation and supervised hardware
+access; this issue supplies neither. Do not induce an outage while watering.
+
+| Field | Operator observation |
+| --- | --- |
+| Date/tester/candidate SHA/manifest version | Pending |
+| HA/Python/HACS versions, source or HACS install | Pending |
+| Adapter/proxy, device model/type/firmware actually observed | Pending |
+| Step, expected result, observed result, pass/fail or not executed | Pending |
+| Configuration, duplicate prevention, one device/four zones | Pending |
+| Entity registry IDs before/after reload/restart, device associations | Pending |
+| English/Italian names, disabled raw battery, null versus zero | Pending |
+| Diagnostics cached values and private identifier inspection | Pending |
+| Offline/recovery poll timestamps, availability and log counts | Pending |
+| Reload/unload, absence of subsequent polling, BLE connection closure | Pending |
+| Write authorization reference and supervised safety arrangements | Not authorized by SBR-104 |
+| Per-zone reported state versus actual water behavior, timed completion | Pending |
+| Command latency: operation, start/end definition, timestamps, sample count | Pending |
+| Polling: configured interval, observed timestamps, missing/stale updates | Pending |
+| Battery: raw value, observation period, workload and conditions | Pending; no percentage or lifetime inference |
+
+A single battery reading cannot establish battery impact. Separate command
+acknowledgement, refreshed HA state and physical actuation latency; the
+five-minute polling interval is not a measured command latency. Retain failures
+and unknown outcomes, check physical state before any further authorized write,
+and never replay a timed-out command automatically.

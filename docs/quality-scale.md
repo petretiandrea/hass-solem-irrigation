@@ -271,3 +271,7 @@ missing source license; GitHub/HACS detection must be confirmed after merge.
 Repository description/topics still require administration permission (prior API
 attempts returned HTTP 403). Dependency/protocol provenance and the remaining
 Quality Scale TODOs remain open; no tier is claimed. No release is published.
+
+## SBR-104 independent revision review
+
+[Revision-bound acceptance report](acceptance-SBR-104.md) records main SHA, access blockers and every checklist rule. Current-session Python/HA checks could not run because the attached workspace has no Python interpreter; remote CI is unknown because gh has no authentication. Earlier results above remain historical. No checklist statuses changed. Fresh installation, UI/HACS and physical WB-4 acceptance remain pending; no tier or future sibling changes are certified.
