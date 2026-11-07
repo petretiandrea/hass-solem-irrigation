@@ -271,3 +271,14 @@ missing source license; GitHub/HACS detection must be confirmed after merge.
 Repository description/topics still require administration permission (prior API
 attempts returned HTTP 403). Dependency/protocol provenance and the remaining
 Quality Scale TODOs remain open; no tier is claimed. No release is published.
+
+## SBR-100 branding and provenance audit
+
+See [the dated audit and evidence](dependency-provenance.md) for upstream asset
+revision/checksums, prepared local custom-integration branding, HA dependency
+versions/licenses/tags/public build paths, MySOLEM derivation blockers and a
+separate Core packaging proposal. Brands and dependency-transparency remain TODO;
+embedding is not an exemption. The MIT source license exists. Fresh main HACS
+run 42379421457 passes with the brands ignore; description/topics/license failures
+from SBR-96 are resolved. Installed branding and candidate checks remain pending.
+No release, hardware command or official tier is authorized by this audit.

@@ -115,3 +115,12 @@ consistent with hass-sorgenia. Confirm GitHub recognizes it after merge.
 Do not add license, description or topics to HACS `ignore` to obtain a green job.
 After applying settings and merging the approved license, rerun HACS on the
 candidate branch and inspect the result. No tag or release is required.
+
+## SBR-100 current evidence
+
+The [provenance audit](dependency-provenance.md) supersedes the historical
+SBR-96 missing metadata/access findings: main HACS now passes and GitHub detects
+MIT, description and topics. Local brand assets are prepared for HA 2026.3+;
+keep the brands ignore pending candidate/installed validation. Resolve the
+recorded MySOLEM derivation evidence before the first release. This audit does
+not authorize a release or change the embedded/no-PyPI distribution decision.
