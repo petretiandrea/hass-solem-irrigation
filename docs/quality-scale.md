@@ -271,3 +271,52 @@ missing source license; GitHub/HACS detection must be confirmed after merge.
 Repository description/topics still require administration permission (prior API
 attempts returned HTTP 403). Dependency/protocol provenance and the remaining
 Quality Scale TODOs remain open; no tier is claimed. No release is published.
+
+## SBR-102 translated errors and lifecycle review
+
+Reviewed separately on 2026-11-07:
+- [exception-translations](https://contributors.home-assistant.io/core/quality-scale/exception-translations/):
+  coordinator poll/action errors and duration validation now use domain/key
+  metadata. strings.json and en/it contain matching exception keys and numeric
+  limit placeholders. Client text is not inserted into translations; original
+  ValueError/transport causes remain chained unchanged. Diagnostics allowlisting,
+  command locking, guarded close and no-retry behavior are preserved.
+- [repair-issues](https://contributors.home-assistant.io/core/quality-scale/repair-issues/):
+  exempt for the currently supported surface. There is no user account, renewable
+  credential, known minimum firmware requirement, deprecated configuration or
+  migration needing user confirmation. Reachability, authentication and malformed
+  responses cannot establish a specific required user repair; fresh sessions
+  already permit recovery. Valve fault bits are exposed as diagnostic entities,
+  but the protocol evidence does not establish a safe user repair/reset procedure.
+  Raw battery has no verified low-battery threshold. Do not invent firmware,
+  battery or fault repairs from these signals. Revisit if a verified actionable
+  condition becomes supported. Creation/resolution tests are inapplicable because
+  no repair is created; lifecycle tests assert no issues during outage/recovery.
+- [stale-devices](https://contributors.home-assistant.io/core/quality-scale/stale-devices/):
+  the official single fixed device per config entry exemption applies. WB-4's
+  four zones are fixed entities on that controller, not independently removable
+  hardware. BLE silence is not proof of removal. Keep the controller during an
+  outage; the user removes the integration entry to remove it and all associated
+  entities. No device-removal hook or automatic pruning is appropriate.
+
+`test_translated_validation_and_action_errors` resolves HA exception translations
+in English and Italian, checks placeholders and error metadata, preserves original
+validation/transport causes and prevents writes on invalid/busy requests.
+`test_fixed_controller_entry_removal` covers online/offline removal, recovery,
+registry cleanup and polling shutdown. Existing command/error/entity tests retain
+serialization, cancellation, unload and fresh-session recovery coverage.
+
+No hardware commands are run. No official tier is claimed: branding, dependency
+provenance, whole-client coverage, verified discovery/reconfiguration and strict
+typing remain independent TODOs. Historical validation counts above describe
+previous changes, not this PR.
+
+SBR-102 validation: Python 3.14.10; 104 integration tests pass on each existing
+matrix target, HA 2026.10.4/plugin 0.13.375 and HA 2026.8.0/plugin 0.13.354.
+All 14 adapter modules have 100% line/branch coverage on both targets and satisfy
+the unchanged >95% per-module gate. The older target emits 56 mocked-Bluetooth
+pytest-socket warnings without failures. All 34 standalone simulated client tests,
+Ruff 0.14.3, distribution metadata check, compileall and git diff --check pass.
+The integration-only run still reports 54% overall including the embedded client;
+this does not close SBR-99. Official hassfest/HACS remain enabled in unchanged CI;
+local checks here do not claim their remote results or hardware evidence.

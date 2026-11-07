@@ -84,5 +84,31 @@
         }
       }
     }
+  },
+  "exceptions": {
+    "authentication_failed": {
+      "message": "Controller authentication failed; the next poll opens a fresh session."
+    },
+    "snapshot_failed": {
+      "message": "Unable to read controller snapshot; check Bluetooth reachability and response data."
+    },
+    "invalid_irrigation": {
+      "message": "Zone must be an integer from 1 to 4 and duration must be a whole number from 1 to {max_minutes} minutes."
+    },
+    "invalid_minutes": {
+      "message": "Duration must be a whole number from 1 to {max_minutes} minutes."
+    },
+    "irrigation_active": {
+      "message": "Irrigation is already active. Stop all irrigation before starting a zone."
+    },
+    "state_unconfirmed": {
+      "message": "The controller did not confirm the requested irrigation state. The command may have been rejected or may still be taking effect; check the device before sending another command."
+    },
+    "command_failed": {
+      "message": "Unable to confirm irrigation command. Check Bluetooth and controller state before retrying; the command has not been repeated."
+    },
+    "command_cancelled": {
+      "message": "Irrigation command cancelled; outcome unknown. Check controller state before sending another command."
+    }
   }
 }
