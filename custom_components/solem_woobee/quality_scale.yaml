@@ -49,7 +49,7 @@ rules:
       reviewing library packaging, license and public release provenance; no exemption claimed.
   docs-high-level-description:
     status: done
-    comment: README.md describes WB-4 BLE scope, manual installation/configuration and removal.
+    comment: README.md documents verified WB-4 scope, HACS/manual installation, configuration and removal; docs/releasing.md records pending clean-install acceptance.
   docs-installation-instructions:
     status: done
     comment: README.md describes WB-4 BLE scope, manual installation/configuration and removal.

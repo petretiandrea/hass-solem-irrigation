@@ -204,3 +204,70 @@ both HA 2026.10.4 and 2026.8.0 with Python 3.14.10. All 14 adapter modules have
 compileall, git diff --check and full official hassfest (1 integration, 0 invalid)
 pass. HA 2026.8.0 retains 54 mocked-Bluetooth pytest-socket warnings. No hardware
 validation or additional Quality Scale tier is claimed.
+
+## SBR-96 distribution and documentation
+
+Reviewed the official Quality Scale documentation rules and directly inspected
+hass-sorgenia metadata and validation/release workflows. README now leads with
+HA/HACS/manual installation, prerequisites, verified device scope, actual local
+BLE/cloud dependency, configuration and links to entity/action/automation docs.
+`docs/releasing.md` defines the sole manifest-based version process, no PyPI,
+manual draft/release steps and an explicitly pending fresh-install/hardware
+checklist. Merging this PR does not create or publish a release.
+
+Affected rules: docs-high-level-description, docs-installation-instructions,
+docs-installation-parameters, docs-configuration-parameters, docs-removal-instructions,
+docs-supported-devices/functions, docs-known-limitations, docs-data-update,
+docs-actions/examples/use-cases/troubleshooting. Evidence is in README and the
+linked manual-command, diagnostics and release documents. Dependency transparency
+remains TODO for licensing/provenance/Core packaging review; the embedded client
+is documented, not declared exempt. Brands remains TODO; HACS explicitly ignores
+only that check, following the reference template. No tier is claimed.
+
+CI retains both HA targets and the >95% per-module adapter coverage gate, adds
+Ruff fatal-error checks and a source-layout/import/metadata gate, and runs HACS
+alongside hassfest. No adapter behavior changes. Whole-client coverage, branding,
+provenance, discovery, translations of exceptions, strict typing and the remaining
+checklist TODOs are still open. Clean-install and real-hardware evidence must be
+collected before the first release; simulated tests do not close those gaps.
+
+Distribution review also found no LICENSE file or GitHub-detected license.
+Release checklist explicitly requires a maintainer licensing/provenance decision
+before distribution; no license grant is invented by this PR.
+
+SBR-96 local validation: Python 3.14.10; Ruff 0.14.3, distribution metadata/import
+gate (including matching release tag), 34 standalone client tests, compileall
+and git diff --check pass. Each HA target (2026.8.0/plugin 0.13.354 and
+2026.10.4/plugin 0.13.375) passes 99 integration tests; all 14 adapter modules
+have 100% line/branch coverage and pass the >95% gate. HA 2026.8.0 retains 54
+mocked-Bluetooth pytest-socket warnings. These results do not prove hardware,
+fresh-install, HACS download or whole-integration Quality Scale compliance.
+Full official hassfest from Core tag 2026.10.4 (357cae5) also passes locally:
+1 integration, 0 invalid integrations. Remote HACS validation remains a CI check;
+its brands exception is explicit and does not close the branding TODO.
+GitHub Actions run/check status could not be read by this session: GitHub App
+returns HTTP 403 / Resource not accessible by integration. A maintainer must
+review the remote jobs (especially HACS) before merging; local checks are not a
+claim that the remote workflow passed.
+
+### SBR-96 HACS CI follow-up
+
+The failing HACS job 128420133546 is now readable: it reports three failures,
+missing repository topics, description and license. Integration manifest and
+hacs.json validation passed; integration categories produces a warning only.
+Attempts to set description/topics through the GitHub API returned HTTP 403
+(Resource not accessible by integration): repository-administration access is
+not granted to this session. `docs/releasing.md` supplies the exact maintainer
+command. License selection is awaiting the repository owner's instruction.
+These checks remain enabled; no additional HACS ignores or Quality Scale tier
+claims are introduced. HACS remains failing until those prerequisites are met.
+
+### Owner-authorized license selection
+
+The owner delegated license selection. Added the standard MIT LICENSE for both
+integration and embedded client, consistent with hass-sorgenia, plus SPDX metadata
+and license-file inclusion in pyproject.toml and a README link. This resolves the
+missing source license; GitHub/HACS detection must be confirmed after merge.
+Repository description/topics still require administration permission (prior API
+attempts returned HTTP 403). Dependency/protocol provenance and the remaining
+Quality Scale TODOs remain open; no tier is claimed. No release is published.
