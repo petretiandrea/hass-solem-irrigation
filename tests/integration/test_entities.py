@@ -59,11 +59,11 @@ async def test_mapping_and_metadata(hass, language, expected_name):
             assert state(hass, "binary_sensor", f"zone_{zone}_valve_fault").state == ("on" if zone in (2, 4) else "off")
         registry = er.async_get(hass)
         entities = er.async_entries_for_config_entry(registry, entry.entry_id)
-        assert len(entities) == 18
+        assert len(entities) == 23
         device, = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
         assert device.identifiers == {(DOMAIN, ADDRESS)}
         assert {item.device_id for item in entities} == {device.id}
-        assert len({item.unique_id for item in entities}) == 18
+        assert len({item.unique_id for item in entities}) == 23
         for item in entities:
             assert item.has_entity_name
             assert item.translation_key

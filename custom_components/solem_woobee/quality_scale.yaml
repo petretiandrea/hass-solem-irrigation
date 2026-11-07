@@ -2,17 +2,17 @@
 # Evidence and remaining work: docs/quality-scale.md
 rules:
   action-setup:
-    status: exempt
-    comment: No custom actions, trigger or condition platforms are exposed. Revisit with SBR-94.
+    status: done
+    comment: Entity action registered during async_setup with schema and services.yaml; test_commands.py verifies routing.
   docs-actions:
-    status: exempt
-    comment: No custom actions, trigger or condition platforms are exposed. Revisit with SBR-94.
+    status: done
+    comment: docs/manual-irrigation.md documents valve actions, saved defaults, conditional close and global stop, examples and errors.
   docs-conditions:
     status: exempt
-    comment: No custom actions, trigger or condition platforms are exposed. Revisit with SBR-94.
+    comment: No custom trigger or condition platforms are exposed. Manual command action documented separately.
   docs-triggers:
     status: exempt
-    comment: No custom actions, trigger or condition platforms are exposed. Revisit with SBR-94.
+    comment: No custom trigger or condition platforms are exposed. Manual command action documented separately.
   appropriate-polling:
     status: done
     comment: Five-minute conservative BLE interval; only real subscribers activate polling. See docs/coordinator.md;
@@ -67,30 +67,28 @@ rules:
   has-entity-name:
     status: done
     comment: All read entities inherit has_entity_name and use translated names with zone placeholders;
-      actual HA names tested in English and Italian.
+      actual HA names tested in English and Italian, including zone valves and global stop button.
   test-before-setup:
     status: done
     comment: async_config_entry_first_refresh completes before registry and platform setup; failures retry
       setup.
   action-exceptions:
-    status: todo
-    comment: SBR-94 must define action error handling and serialization with coordinator reads; platforms
-      must explicitly declare parallel update behavior.
+    status: done
+    comment: Command validation, transport failures and unconfirmed outcomes raise HA errors; test_commands.py.
   parallel-updates:
     status: done
-    comment: sensor and binary_sensor explicitly set PARALLEL_UPDATES=0; all read entities subscribe to
-      the shared coordinator. Reassess command serialization in SBR-94.
+    comment: All platforms set PARALLEL_UPDATES=0; coordinator lock serializes commands and reads. test_commands.py.
   config-entry-unloading:
     status: done
     comment: Setup/unload/reload, timer shutdown and failed platform unload tested in tests/integration.
   docs-configuration-parameters:
     status: done
     comment: README.md documents BLE address selection, HA/Python prerequisites and Bluetooth reachability;
-      no user credentials required.
+      no user credentials required. Per-zone local duration defaults documented in docs/manual-irrigation.md.
   docs-installation-parameters:
     status: done
     comment: README.md documents BLE address selection, HA/Python prerequisites and Bluetooth reachability;
-      no user credentials required.
+      no user credentials required. Per-zone local duration defaults documented in docs/manual-irrigation.md.
   entity-unavailable:
     status: done
     comment: Real HA state tests cover unknown partial durations, reported zero, unavailable state on
@@ -108,11 +106,11 @@ rules:
       BLE connection. Rejection is retried with a new session.'
   test-coverage:
     status: todo
-    comment: HA wrapper modules including read platforms gated above 95% per module. Embedded client modules
+    comment: HA wrapper modules including valve and read platforms gated above 95% per module. Embedded client modules
       need complete coverage assessment; wrapper results alone do not meet the whole-integration rule.
   devices:
     status: done
-    comment: All 18 registry entities share the normalized controller device; registry associations remain
+    comment: All 23 registry entities share the normalized controller device; registry associations remain
       stable across metadata changes and reload.
   diagnostics:
     status: todo
@@ -157,10 +155,10 @@ rules:
   entity-category:
     status: done
     comment: Connectivity, clock/input flags, valve faults and raw battery are diagnostic. Operational
-      status remains uncategorized; no writable configuration entities.
+      status remains uncategorized; zone valves and global stop are operational; duration defaults are local HA options.
   entity-device-class:
     status: done
-    comment: Duration in seconds, running activity, problem flags and read connectivity tested. Unscaled
+    comment: Water valves, duration in seconds, running activity, problem flags and read connectivity tested. Unscaled
       battery has no fabricated class, unit or statistics.
   entity-disabled-by-default:
     status: done
@@ -168,7 +166,7 @@ rules:
       and explicit enable/reload. Other exposed fields are operationally useful.
   entity-translations:
     status: done
-    comment: strings.json and en/it translations cover all read entities and zone placeholders; actual
+    comment: strings.json and en/it translations cover read entities and zone valves and global stop button and zone placeholders; actual
       HA names verified in both languages.
   icon-translations:
     status: done

@@ -193,9 +193,9 @@ There are **zero automatic retries**, including read operations. Callers may
 retry a failed read with a new connection and their own bounded backoff. A start,
 stop or write may already have reached hardware when its response times out:
 refresh state rather than replaying it. Manual durations use positive whole
-minutes, zones 1–4 and a 24-bit seconds wire limit (279620 minutes). HA's smaller
-operational duration limit belongs to SBR-94. An acknowledgement reports controller
-state, not measured water flow.
+minutes, zones 1–4 and a 24-bit seconds wire limit (279620 minutes). HA validates
+that wire limit but no smaller firmware limit has been established. An
+acknowledgement reports controller state, not measured water flow.
 
 `ControllerIdentity` normalizes BLE MACs and CoreBluetooth UUIDs. Its ID is the
 address; four `ZoneIdentity` objects have IDs `<address>_zone_<n>`. Names, serials
@@ -227,7 +227,7 @@ validation; unavailable controllers retry setup through Home Assistant.
 The coordinator performs an initial read during setup. Periodic polling runs
 every five minutes only while entities subscribe; with no active entities it
 stops automatically. Read-only sensor and binary_sensor platforms share this snapshot. Commands are
-reserved for SBR-94. The client is embedded, not fetched
+implemented as described below. The client is embedded, not fetched
 from PyPI, and shares the integration version in `manifest.json`.
 
 Integration tests: install `requirements_test.txt` and run
@@ -312,3 +312,20 @@ records implemented rules, pending work and justified exemptions. It is a
 project checklist, not an awarded Home Assistant tier. New platforms must
 complete their entity-specific rules and lifecycle tests before being marked
 done. See [audit and validation](docs/quality-scale.md).
+
+### Manual irrigation commands
+
+Four **Zone N** water valves expose standard HA open/close actions and reported
+activity. Opening uses the zone's default duration (initially one minute), saved
+in HA with `solem_woobee.set_default_duration`. For a single run with an explicit
+duration use `solem_woobee.start_irrigation`; both actions target a valve and take
+whole `minutes` from 1 to 279620 (wire limit, not a recommended watering duration).
+
+Closing re-reads state and sends the client's global stop **only if that zone is
+active**; closing an inactive zone does not intentionally stop another zone.
+There is no atomic per-zone stop: another application can race the read/stop.
+The **Stop all irrigation** button remains an explicit controller-wide stop.
+Starts are rejected while any zone is active, commands are never automatically
+retried, and errors/unconfirmed results raise HA action errors. See
+[manual irrigation](docs/manual-irrigation.md) for examples, default persistence,
+consistency, compatibility and supervised hardware verification.

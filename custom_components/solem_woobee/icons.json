@@ -1,12 +1,33 @@
 {
   "entity": {
     "binary_sensor": {
-      "enabled": { "default": "mdi:sprinkler" },
-      "manual": { "default": "mdi:hand-back-right" },
-      "sensor_open": { "default": "mdi:electric-switch" }
+      "enabled": {
+        "default": "mdi:sprinkler"
+      },
+      "manual": {
+        "default": "mdi:hand-back-right"
+      },
+      "sensor_open": {
+        "default": "mdi:electric-switch"
+      }
     },
     "sensor": {
-      "battery_raw": { "default": "mdi:battery-unknown" }
+      "battery_raw": {
+        "default": "mdi:battery-unknown"
+      }
+    },
+    "button": {
+      "stop_all": {
+        "default": "mdi:stop-circle"
+      }
+    }
+  },
+  "services": {
+    "start_irrigation": {
+      "service": "mdi:sprinkler"
+    },
+    "set_default_duration": {
+      "service": "mdi:timer-cog"
     }
   }
 }

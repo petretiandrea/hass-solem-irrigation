@@ -1,0 +1,31 @@
+start_irrigation:
+  target:
+    entity:
+      domain: valve
+      integration: solem_woobee
+  fields:
+    minutes:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 279620
+          step: 1
+          mode: box
+          unit_of_measurement: min
+
+set_default_duration:
+  target:
+    entity:
+      domain: valve
+      integration: solem_woobee
+  fields:
+    minutes:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 279620
+          step: 1
+          mode: box
+          unit_of_measurement: min
