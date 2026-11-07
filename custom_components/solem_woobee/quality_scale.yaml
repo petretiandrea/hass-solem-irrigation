@@ -117,10 +117,10 @@ rules:
     comment: diagnostics.py exports only allowlisted cached operational fields; no identity, config, raw frames or session secrets. test_diagnostics.py verifies empty, stale and partial data without I/O.
   discovery:
     status: todo
-    comment: A verified Bluetooth advertisement matcher is not implemented.
+    comment: SBR-101 remains blocked on supervised WB-4/type-180 firmware-7.0.2 advertisement bytes and provenance; GATT evidence does not establish a matcher. See docs/bluetooth-discovery.md.
   discovery-update-info:
     status: todo
-    comment: A verified Bluetooth advertisement matcher is not implemented.
+    comment: SBR-101 remains TODO pending verified advertisements and a stable advertised identity; address/name matching cannot safely identify an address change. Frozen legacy registry identities are documented in docs/bluetooth-discovery.md.
   docs-data-update:
     status: done
     comment: README.md and docs/coordinator.md describe WB-4 firmware scope, read snapshots, missing values,
@@ -177,9 +177,8 @@ rules:
     comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
       flows before claiming Gold.
   reconfiguration-flow:
-    status: todo
-    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
-      flows before claiming Gold.
+    status: done
+    comment: SBR-101 adds async_step_reconfigure with authenticated snapshot/known-serial validation, confirmation, collision recheck and update/reload. test_reconfigure.py covers errors/retry/cancel, serial absence/mismatch, repeated address changes preserving all 23 entity records/device/options and unload. Missing original serial fails closed; see docs/bluetooth-discovery.md.
   repair-issues:
     status: todo
     comment: Review translated failures, address reconfiguration and applicable repair/device cleanup

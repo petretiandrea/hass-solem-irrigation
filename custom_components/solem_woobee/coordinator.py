@@ -26,6 +26,8 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
         super().__init__(hass, _LOGGER, name=DOMAIN, config_entry=entry,
                          update_interval=POLL_INTERVAL)
         self.address = entry.data[CONF_ADDRESS]
+        # Freeze legacy address-derived registry IDs across transport changes.
+        self.identity_address = entry.data.get("identity_address", self.address)
         self._io_lock = Lock()
 
     async def _async_update_data(self) -> WooBeeData:

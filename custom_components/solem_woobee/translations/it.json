@@ -8,16 +8,29 @@
         "data": {
           "address": "Controller Bluetooth"
         }
+      },
+      "reconfigure": {
+        "title": "Modifica indirizzo Bluetooth",
+        "description": "Inserisci il nuovo indirizzo dello stesso controller fisico. Gli identificativi delle entità e del dispositivo rimangono invariati. Non usare questo flusso per sostituire il controller.",
+        "data": {
+          "address": "Indirizzo Bluetooth",
+          "same_controller": "Confermo che è lo stesso controller fisico"
+        }
       }
     },
     "error": {
       "invalid_auth": "Il controller ha rifiutato l’autenticazione.",
       "cannot_connect": "Connessione non riuscita. Verifica la portata Bluetooth e le connessioni disponibili, poi riprova.",
-      "invalid_response": "Il controller ha restituito una risposta non supportata o non valida."
+      "invalid_response": "Il controller ha restituito una risposta non supportata o non valida.",
+      "invalid_address": "Inserisci un indirizzo MAC Bluetooth o UUID CoreBluetooth valido.",
+      "confirm_controller": "Conferma che è lo stesso controller fisico.",
+      "wrong_controller": "Il numero di serie non corrisponde al controller configurato.",
+      "identity_unavailable": "Il numero di serie originale non è disponibile. Ripristina la connessione al vecchio indirizzo per leggerlo prima di riprovare."
     },
     "abort": {
       "already_configured": "Questo controller è già configurato.",
-      "no_devices_found": "Nessun dispositivo Bluetooth collegabile trovato. Avvicina il controller e riprova."
+      "no_devices_found": "Nessun dispositivo Bluetooth collegabile trovato. Avvicina il controller e riprova.",
+      "reconfigure_successful": "Indirizzo Bluetooth aggiornato."
     }
   },
   "entity": {
