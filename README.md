@@ -9,7 +9,7 @@ python scripts/inspect_woobee.py
 
 ```python
 import asyncio
-from custom_components.solem_woobee.woobee_api import WooBeeClient
+from woobee_api import WooBeeClient
 
 async def main():
     client = WooBeeClient.local()
@@ -32,7 +32,7 @@ and response payloads use AES-CTR with that challenge as nonce.
 
 ```python
 from bleak import BleakClient
-from custom_components.solem_woobee.woobee_api import SolemSession, WOOBEE_V2_GATT
+from woobee_api import SolemSession, WOOBEE_V2_GATT
 
 async with BleakClient("AA:BB:CC:DD:EE:FF") as client:
     async with SolemSession(client, WOOBEE_V2_GATT) as session:
@@ -84,7 +84,7 @@ controller UUID. No persistent controller state changes.
 modifica memoria persistente controller; non viene esposto da CLI.
 
 ```python
-from custom_components.solem_woobee.woobee_api import Days, ProgramCycle, Schedule, TimeOfDay, ZoneDurations
+from woobee_api import Days, ProgramCycle, Schedule, TimeOfDay, ZoneDurations
 
 schedule = Schedule(
     number=1,
@@ -110,7 +110,7 @@ every schedule present in JSON.
 
 ```python
 from pathlib import Path
-from custom_components.solem_woobee.woobee_api import ControllerBackup
+from woobee_api import ControllerBackup
 
 backup = await woobee.backup()
 Path("wb4-backup.json").write_text(backup.to_json())
@@ -151,7 +151,7 @@ The standalone client needs Python 3.11+, the integration targets HA 2026.8.0+
 
 ```python
 from bleak import BleakClient
-from custom_components.solem_woobee.woobee_api import WooBeeConnection
+from woobee_api import WooBeeConnection
 
 async with WooBeeConnection("AA:BB:CC:DD:EE:FF", BleakClient) as api:
     state = await api.read_state()
@@ -227,3 +227,8 @@ from PyPI, and shares the integration version in `manifest.json`.
 Integration tests: install `requirements_test.txt` and run
 `python -m pytest tests/integration -q`. The existing client tests continue to
 run with `python -m unittest discover -s tests -v`, without Home Assistant.
+
+The local client wheel exposes `woobee_api` directly, so CLI tools and client
+tests do not load the Home Assistant integration package. HACS still installs
+the client at `custom_components/solem_woobee/woobee_api`; integration modules
+use relative imports. All Python imports stay at module top level.

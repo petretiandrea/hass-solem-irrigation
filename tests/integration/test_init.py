@@ -17,7 +17,7 @@ ADDRESS = "aa:bb:cc:dd:ee:ff"
 async def test_setup_unload_reload(hass):
     entry = MockConfigEntry(domain=DOMAIN, unique_id=ADDRESS, data={CONF_ADDRESS: ADDRESS})
     entry.add_to_hass(hass)
-    with patch("custom_components.solem_woobee.connection.async_validate_device", return_value=object()) as validate:
+    with patch("custom_components.solem_woobee.async_validate_device", return_value=object()) as validate:
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert await hass.config_entries.async_reload(entry.entry_id)
@@ -33,7 +33,7 @@ async def test_setup_unload_reload(hass):
 ])
 async def test_setup_errors(hass, error, expected):
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS})
-    with patch("custom_components.solem_woobee.connection.async_validate_device", side_effect=error):
+    with patch("custom_components.solem_woobee.async_validate_device", side_effect=error):
         with pytest.raises(expected):
             await async_setup_entry(hass, entry)
 

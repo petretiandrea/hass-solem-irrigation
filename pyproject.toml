@@ -15,7 +15,7 @@ asyncio_mode = "auto"
 
 
 [tool.hatch.build.targets.wheel]
-packages = ["custom_components"]
+packages = ["custom_components/solem_woobee/woobee_api"]
 
 [tool.hatch.version]
 path = "custom_components/solem_woobee/manifest.json"

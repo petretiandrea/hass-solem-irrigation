@@ -11,7 +11,7 @@ import sys
 from bleak import BleakClient
 from bleak.exc import BleakError
 
-from custom_components.solem_woobee.woobee_api import (
+from woobee_api import (
     ControllerBackup,
     Days,
     ProgramCycle,

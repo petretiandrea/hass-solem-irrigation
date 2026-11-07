@@ -7,7 +7,7 @@ import asyncio
 
 from bleak import BleakClient
 
-from custom_components.solem_woobee.woobee_api import WooBeeConnection
+from woobee_api import WooBeeConnection
 
 
 def print_status(status: object) -> None:
