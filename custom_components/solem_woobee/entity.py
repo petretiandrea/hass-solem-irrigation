@@ -43,6 +43,6 @@ class WooBeeZoneEntity(WooBeeEntity):
         self._attr_unique_id = identity.zones[zone - 1].unique_id
 
     @property
-    def available(self) -> bool:
-        return (super().available and
-                self.coordinator.data.state.status.zone_remaining_seconds[self.zone - 1] is not None)
+    def remaining_seconds(self) -> int | None:
+        """Return an unknown value for a missing page, keeping the zone reachable."""
+        return self.coordinator.data.state.status.zone_remaining_seconds[self.zone - 1]

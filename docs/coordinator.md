@@ -17,7 +17,8 @@ A failed snapshot leaves the last successful data available internally, but
 CoordinatorEntity marks all entities unavailable until recovery. A missing
 mandatory status page, valve response or input-alert group fails the whole
 snapshot. Optional identity fields remain None; missing zone duration pages
-make affected zone entities unavailable, without treating unknown as zero.
+produce a None duration on an available zone, without treating unknown as zero.
+Future platform state properties must preserve None as an unknown state.
 Controller disabled means irrigation disabled, not offline.
 
 Registry identifiers use the normalized configured BLE address/CoreBluetooth
@@ -27,8 +28,10 @@ they are channels of the physical controller, not separate registry devices.
 Future platforms should subclass WooBeeEntity/WooBeeZoneEntity and give each
 entity type its own unique-ID suffix when multiple entities represent one zone.
 
-Setup performs the initial refresh before registering the controller. A listener
-keeps polling active without platforms. Successful unload removes the listener
-and shuts down the coordinator timer; failed platform unload leaves it running.
+Setup performs the initial refresh before registering the controller. Only real
+entity subscribers keep polling active. Without subscribers there is no periodic
+BLE traffic. CoordinatorEntity subscribes when added and unsubscribes on removal.
+Successful unload shuts down the coordinator timer; failed platform unload
+leaves it running.
 Sessions are scoped with async context managers and close on errors/cancellation.
 No physical hardware validation or measured battery impact is claimed.

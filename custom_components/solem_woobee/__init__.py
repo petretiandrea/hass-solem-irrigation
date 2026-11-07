@@ -18,8 +18,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: WooBeeConfigEntry) -> bo
     dr.async_get(hass).async_get_or_create(
         config_entry_id=entry.entry_id, **controller_device_info(coordinator.data)
     )
-    # Keep polling even before sensor/valve platforms supply listeners.
-    entry.async_on_unload(coordinator.async_add_listener(lambda: None))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 

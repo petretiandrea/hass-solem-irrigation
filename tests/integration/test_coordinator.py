@@ -1,14 +1,15 @@
 """Shared snapshots, partial data, recovery and registry ownership."""
-from unittest.mock import patch
 from dataclasses import replace
 from datetime import timedelta
-from homeassistant.util import dt as dt_util
-from pytest_homeassistant_custom_component.common import async_fire_time_changed
+import logging
+from unittest.mock import patch
 
 import pytest
 from homeassistant.const import CONF_ADDRESS
 from homeassistant.helpers import device_registry as dr
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from homeassistant.helpers.entity_component import EntityComponent
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import MockConfigEntry, async_fire_time_changed
 
 from custom_components.solem_woobee import async_unload_entry
 from custom_components.solem_woobee.const import DOMAIN
@@ -40,7 +41,10 @@ async def test_update_failure_and_recovery(hass, error):
         await coordinator.async_refresh()
         entities = [WooBeeEntity(coordinator), WooBeeZoneEntity(coordinator, 1)]
         assert all(entity.available for entity in entities)
-        assert not WooBeeZoneEntity(coordinator, 3).available
+        partial_zone = WooBeeZoneEntity(coordinator, 3)
+        assert partial_zone.available
+        assert partial_zone.remaining_seconds is None
+        assert entities[1].remaining_seconds == 0
         previous = coordinator.data
         await coordinator.async_refresh()
         assert coordinator.data is previous
@@ -73,28 +77,50 @@ async def test_scheduled_poll_stops_after_unload(hass, freezer):
     with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()) as read:
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
+        # Setup alone must not keep battery-powered BLE polling alive.
+        freezer.tick(timedelta(minutes=6))
+        async_fire_time_changed(hass, dt_util.utcnow())
+        await hass.async_block_till_done()
+        assert read.await_count == 1
+        entity = WooBeeZoneEntity(entry.runtime_data, 1)
+        component = EntityComponent(logging.getLogger(__name__), DOMAIN, hass)
+        await component.async_add_entities([entity])
         freezer.tick(timedelta(minutes=6))
         async_fire_time_changed(hass, dt_util.utcnow())
         await hass.async_block_till_done()
         assert read.await_count == 2
+        await entity.async_remove(force_remove=True)
+        freezer.tick(timedelta(minutes=6))
+        async_fire_time_changed(hass, dt_util.utcnow())
+        await hass.async_block_till_done()
+        assert read.await_count == 2
+        # A second subscriber verifies unload shuts down a live polling timer.
+        unsubscribe = entry.runtime_data.async_add_listener(lambda: None)
         assert await hass.config_entries.async_unload(entry.entry_id)
+        unsubscribe()
         freezer.tick(timedelta(minutes=6))
         async_fire_time_changed(hass, dt_util.utcnow())
         await hass.async_block_till_done()
         assert read.await_count == 2
 
 
-async def test_failed_platform_unload_preserves_polling(hass):
+async def test_failed_platform_unload_preserves_polling(hass, freezer):
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS})
     entry.add_to_hass(hass)
-    with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()):
+    with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()) as read:
         assert await hass.config_entries.async_setup(entry.entry_id)
+        unsubscribe = entry.runtime_data.async_add_listener(lambda: None)
         with patch.object(hass.config_entries, "async_unload_platforms", return_value=False), patch.object(
             entry.runtime_data, "async_shutdown"
         ) as shutdown:
             assert not await async_unload_entry(hass, entry)
             shutdown.assert_not_called()
+        freezer.tick(timedelta(minutes=6))
+        async_fire_time_changed(hass, dt_util.utcnow())
+        await hass.async_block_till_done()
+        assert read.await_count == 2
         assert await hass.config_entries.async_unload(entry.entry_id)
+        unsubscribe()
 
 
 async def test_optional_identity_and_disabled_controller(hass):
@@ -110,4 +136,12 @@ async def test_optional_identity_and_disabled_controller(hass):
     assert entity.available
     assert entity.unique_id == ADDRESS + "_zone_1"
     assert entity.device_info["identifiers"] == {(DOMAIN, ADDRESS)}
+    await coordinator.async_shutdown()
+
+
+@pytest.mark.parametrize("zone", [0, 5, True, "1"])
+async def test_invalid_zone(hass, zone):
+    coordinator = WooBeeCoordinator(hass, MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS}))
+    with pytest.raises(ValueError):
+        WooBeeZoneEntity(coordinator, zone)
     await coordinator.async_shutdown()
