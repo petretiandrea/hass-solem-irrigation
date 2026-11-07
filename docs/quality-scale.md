@@ -249,3 +249,15 @@ GitHub Actions run/check status could not be read by this session: GitHub App
 returns HTTP 403 / Resource not accessible by integration. A maintainer must
 review the remote jobs (especially HACS) before merging; local checks are not a
 claim that the remote workflow passed.
+
+### SBR-96 HACS CI follow-up
+
+The failing HACS job 128420133546 is now readable: it reports three failures,
+missing repository topics, description and license. Integration manifest and
+hacs.json validation passed; integration categories produces a warning only.
+Attempts to set description/topics through the GitHub API returned HTTP 403
+(Resource not accessible by integration): repository-administration access is
+not granted to this session. `docs/releasing.md` supplies the exact maintainer
+command. License selection is awaiting the repository owner's instruction.
+These checks remain enabled; no additional HACS ignores or Quality Scale tier
+claims are introduced. HACS remains failing until those prerequisites are met.

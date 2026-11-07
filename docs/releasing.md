@@ -96,3 +96,23 @@ are pending; simulated tests cannot satisfy the physical checks.
 No release workflow runs on merge or tag push. Credentials for PyPI are neither
 required nor used. Repository branch protection should require every CI job;
 setting that policy remains a maintainer action outside source configuration.
+
+## Repository metadata required by HACS
+
+HACS also checks GitHub repository settings, which cannot be supplied through
+`hacs.json`. Before merging the distribution PR, a maintainer with repository
+administration permission must set a non-empty description and topics. For this
+repository the intended values can be applied with:
+
+```bash
+gh repo edit petretiandrea/hass-solem-irrigation \
+  --description 'Home Assistant custom integration and embedded local BLE client for SOLEM WooBee V2 / WB-4 irrigation controllers' \
+  --add-topic home-assistant --add-topic hacs --add-topic custom-integration \
+  --add-topic bluetooth --add-topic irrigation --add-topic solem-woobee
+```
+
+The repository must also contain a maintainer-approved `LICENSE` recognized by
+GitHub. Selecting that license is a prerequisite, not a check to disable.
+Do not add license, description or topics to HACS `ignore` to obtain a green job.
+After applying settings and merging the approved license, rerun HACS on the
+candidate branch and inspect the result. No tag or release is required.
