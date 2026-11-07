@@ -1,6 +1,48 @@
-# SOLEM WooBee BLE
+# SOLEM WooBee for Home Assistant
 
-BLE client for WooBee V2 / WB-4 firmware 7.0.2.
+Custom integration for local Bluetooth monitoring and timed manual irrigation.
+The verified protocol/device reference is **WooBee V2 / WB-4, type 180, firmware
+7.0.2**, recovered from MySOLEM 6.13.3. Other models/firmware are not verified.
+Automated tests simulate BLE; clean-install and supervised hardware acceptance
+remain pending before the first release. No official Quality Scale tier is claimed.
+
+## Install and configure
+
+Requires **Home Assistant 2026.8.0+**, its Python **3.14+** environment and a
+connectable Bluetooth adapter or proxy reachable by HA. No MySOLEM account,
+password, cloud subscription or Internet connection is used for controller
+operations. Internet is needed to download HA/HACS dependencies and updates.
+The connection path is HA → local Bluetooth adapter/proxy → controller; proxy
+compatibility and battery impact still require hardware validation.
+
+**HACS (after the first authorized release):** in HACS, open Custom repositories,
+add `https://github.com/petretiandrea/hass-solem-irrigation` as **Integration**,
+download SOLEM WooBee and restart HA. HACS 2.0.5+ is required. This project is not
+claimed to be in the default HACS catalog; no release is published by this task.
+
+**Manual / unreleased candidate:** copy the entire
+`custom_components/solem_woobee/` directory (including `woobee_api/`) from a
+reviewed checkout into `<config>/custom_components/solem_woobee/`, then restart.
+Do not install the local client wheel into HA or copy only the adapter files.
+
+Open **Settings → Devices & services → Add integration → SOLEM WooBee** and
+select the controller visible to HA Bluetooth. Setup reads identity and state;
+there is no YAML setup or cloud login. See [configuration](#home-assistant-configuration),
+[entities](#read-only-entities), [manual commands](#manual-irrigation-commands),
+[automation examples](docs/manual-irrigation.md),
+[troubleshooting](#examples-and-troubleshooting) and
+[release / clean-install checklist](docs/releasing.md).
+
+HA exposes state, four zone valves, duration actions and a global stop button.
+Programs are excluded from HA: no reading, editing, execution or backup/restore.
+Reported valve state is not a measurement of water flow. The unofficial reverse
+engineered protocol may change with firmware; there is no vendor compatibility
+guarantee. A timed-out command may have executed: inspect state before retrying.
+
+## Standalone client and protocol reference
+
+The following sections describe development tools and protocol APIs; their
+program/backup operations are outside the Home Assistant integration scope.
 
 Home Assistant shared polling, availability and device registry design:
 [coordinator documentation](docs/coordinator.md).
@@ -277,6 +319,32 @@ To monitor irrigation, add the four **Zone N irrigating** binary sensors and
 **Zone N remaining time** sensors to a dashboard. Use the entity picker to select
 them: entity IDs depend on the controller name and server language. A remaining
 time of zero is reported idle time; unknown means its duration page was absent.
+
+Example automation: a one-minute timed run at 06:00. Replace the entity ID
+using HA's entity picker and enable only after supervised validation. Controller
+programs remain separate and can conflict with HA schedules; starts during any
+active irrigation are rejected.
+
+```yaml
+alias: Garden timed manual irrigation
+triggers:
+  - trigger: time
+    at: "06:00:00"
+conditions:
+  - condition: state
+    entity_id: valve.garden_zone_1
+    state: "closed"
+actions:
+  - action: solem_woobee.start_irrigation
+    target:
+      entity_id: valve.garden_zone_1
+    data:
+      minutes: 1
+mode: single
+```
+
+The controller owns the run duration; this automation does not rely on a delayed
+HA close action. HA observes timed completion on its next poll.
 
 To receive valve-fault notifications, create an automation in **Settings →
 Automations & scenes**. Choose an **Entity → State** trigger, select the zone's

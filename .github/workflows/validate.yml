@@ -1,0 +1,18 @@
+name: HACS validation
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@d556e736723344f83838d08488c983a15381059a # 22.5.0, as verified in hass-sorgenia
+        with:
+          category: integration
+          comment: false
+          # Pending submission to HA brands; tracked in quality_scale.yaml.
+          ignore: brands
