@@ -2,6 +2,9 @@
 
 BLE client for WooBee V2 / WB-4 firmware 7.0.2.
 
+Home Assistant shared polling, availability and device registry design:
+[coordinator documentation](docs/coordinator.md).
+
 ```bash
 python -m pip install -e .
 python scripts/inspect_woobee.py
