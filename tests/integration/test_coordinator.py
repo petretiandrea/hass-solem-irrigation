@@ -74,7 +74,9 @@ async def test_registry_shared_and_unload(hass):
 async def test_scheduled_poll_stops_after_unload(hass, freezer):
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS})
     entry.add_to_hass(hass)
-    with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()) as read:
+    with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()) as read, patch.object(
+        hass.config_entries, "async_forward_entry_setups", return_value=None,
+    ):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         # Setup alone must not keep battery-powered BLE polling alive.

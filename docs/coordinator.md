@@ -14,18 +14,19 @@ The next scheduled poll retries with a new connection. HA records update
 failures. No irrigation command is replayed.
 
 A failed snapshot leaves the last successful data available internally, but
-CoordinatorEntity marks all entities unavailable until recovery. A missing
+CoordinatorEntity marks state entities unavailable until recovery. The diagnostic
+connectivity binary sensor remains available and reports the last read outcome. A missing
 mandatory status page, valve response or input-alert group fails the whole
 snapshot. Optional identity fields remain None; missing zone duration pages
 produce a None duration on an available zone, without treating unknown as zero.
-Future platform state properties must preserve None as an unknown state.
+The remaining-time sensors preserve None as an unknown HA state.
 Controller disabled means irrigation disabled, not offline.
 
 Registry identifiers use the normalized configured BLE address/CoreBluetooth
 UUID, matching config-entry identity. Names, serial and firmware are metadata.
 Zones use stable `<controller>_zone_<1..4>` IDs and the same controller DeviceInfo;
 they are channels of the physical controller, not separate registry devices.
-Future platforms should subclass WooBeeEntity/WooBeeZoneEntity and give each
+Platforms subclass WooBeeEntity/WooBeeZoneEntity and give each
 entity type its own unique-ID suffix when multiple entities represent one zone.
 
 Setup performs the initial refresh before registering the controller. Only real

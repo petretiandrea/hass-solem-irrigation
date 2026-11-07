@@ -7,7 +7,7 @@ from .coordinator import WooBeeCoordinator
 from .data import WooBeeConfigEntry
 from .entity import controller_device_info
 
-PLATFORMS: list[Platform] = []
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: WooBeeConfigEntry) -> bool:

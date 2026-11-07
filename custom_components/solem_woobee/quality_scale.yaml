@@ -61,13 +61,13 @@ rules:
     comment: CoordinatorEntity owns subscription lifecycle; no synthetic listener. Lifecycle regression
       test covers add/remove and unload.
   entity-unique-id:
-    status: todo
-    comment: Base classes provide normalized zone IDs and has_entity_name. Validate final controller/zone
-      entity IDs and names through SBR-93/SBR-94 platforms.
+    status: done
+    comment: Read platforms use normalized controller/zone IDs plus a field suffix. Actual registry IDs
+      survive metadata changes and reload; tests/integration/test_entities.py.
   has-entity-name:
-    status: todo
-    comment: Base classes provide normalized zone IDs and has_entity_name. Validate final controller/zone
-      entity IDs and names through SBR-93/SBR-94 platforms.
+    status: done
+    comment: All read entities inherit has_entity_name and use translated names with zone placeholders;
+      actual HA names tested in English and Italian.
   test-before-setup:
     status: done
     comment: async_config_entry_first_refresh completes before registry and platform setup; failures retry
@@ -77,9 +77,9 @@ rules:
     comment: SBR-94 must define action error handling and serialization with coordinator reads; platforms
       must explicitly declare parallel update behavior.
   parallel-updates:
-    status: todo
-    comment: SBR-94 must define action error handling and serialization with coordinator reads; platforms
-      must explicitly declare parallel update behavior.
+    status: done
+    comment: sensor and binary_sensor explicitly set PARALLEL_UPDATES=0; all read entities subscribe to
+      the shared coordinator. Reassess command serialization in SBR-94.
   config-entry-unloading:
     status: done
     comment: Setup/unload/reload, timer shutdown and failed platform unload tested in tests/integration.
@@ -92,9 +92,9 @@ rules:
     comment: README.md documents BLE address selection, HA/Python prerequisites and Bluetooth reachability;
       no user credentials required.
   entity-unavailable:
-    status: todo
-    comment: Base classes inherit coordinator availability; missing duration returns None. Confirm unknown/unavailable
-      HA states through actual platforms in SBR-93/SBR-94.
+    status: done
+    comment: Real HA state tests cover unknown partial durations, reported zero, unavailable state on
+      read failure and recovery. Connectivity remains available to report the last read outcome.
   integration-owner:
     status: done
     comment: manifest.json codeowners names petretiandrea.
@@ -108,12 +108,12 @@ rules:
       BLE connection. Rejection is retried with a new session.'
   test-coverage:
     status: todo
-    comment: HA wrapper modules gated above 95% per module. Embedded client modules and final platforms
+    comment: HA wrapper modules including read platforms gated above 95% per module. Embedded client modules
       need complete coverage assessment; wrapper results alone do not meet the whole-integration rule.
   devices:
-    status: todo
-    comment: Physical controller registered with normalized BLE ID and zone DeviceInfo association. Verify
-      actual entity registry associations once platforms exist.
+    status: done
+    comment: All 18 registry entities share the normalized controller device; registry associations remain
+      stable across metadata changes and reload.
   diagnostics:
     status: todo
     comment: Diagnostics redaction and a verified Bluetooth advertisement matcher are not implemented.
@@ -152,20 +152,24 @@ rules:
     status: exempt
     comment: One fixed four-zone WB-4 per config entry; no dynamically added child hardware.
   entity-category:
-    status: todo
-    comment: Select and test entity metadata in SBR-93/SBR-94; no final platform entities exist yet.
+    status: done
+    comment: Connectivity, clock/input flags, valve faults and raw battery are diagnostic. Operational
+      status remains uncategorized; no writable configuration entities.
   entity-device-class:
-    status: todo
-    comment: Select and test entity metadata in SBR-93/SBR-94; no final platform entities exist yet.
+    status: done
+    comment: Duration in seconds, running activity, problem flags and read connectivity tested. Unscaled
+      battery has no fabricated class, unit or statistics.
   entity-disabled-by-default:
-    status: todo
-    comment: Select and test entity metadata in SBR-93/SBR-94; no final platform entities exist yet.
+    status: done
+    comment: Unscaled raw battery is diagnostic and disabled by default; tests verify registry default
+      and explicit enable/reload. Other exposed fields are operationally useful.
   entity-translations:
-    status: todo
-    comment: Select and test entity metadata in SBR-93/SBR-94; no final platform entities exist yet.
+    status: done
+    comment: strings.json and en/it translations cover all read entities and zone placeholders; actual
+      HA names verified in both languages.
   icon-translations:
     status: todo
-    comment: Select and test entity metadata in SBR-93/SBR-94; no final platform entities exist yet.
+    comment: Read platforms use default HA device-class icons; custom icon translations remain to be reviewed.
   exception-translations:
     status: todo
     comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
