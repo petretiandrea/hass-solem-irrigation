@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "solem-woobee"
 dynamic = ["version"]
 description = "Embedded asynchronous BLE client for SOLEM WooBee controllers"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = ["bleak>=0.22", "cryptography>=42"]
 
 [tool.pytest.ini_options]

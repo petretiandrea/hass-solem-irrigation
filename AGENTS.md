@@ -15,6 +15,7 @@ Do not run them against hardware unless user explicitly asks for that command.
 
 ## Design
 
+- Use Python 3.14 for the client, integration and CI (`.python-version`).
 - Keep Python imports at module top level, never inside functions or methods.
 
 - `Schedule`, `Days`, `TimeOfDay`, `ZoneDurations`: public domain API.

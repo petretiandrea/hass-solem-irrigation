@@ -146,8 +146,9 @@ The client now lives in `custom_components/solem_woobee/woobee_api`, following
 hass-sorgenia's embedded API layout. Update imports from the former root
 `solem_woobee` package. It has no Home Assistant imports, including type-only
 imports, and is shipped with the integration; no PyPI release is planned.
-The standalone client needs Python 3.11+, the integration targets HA 2026.8.0+
-(Python 3.14). CI runs the client on both Python versions without HA installed.
+Both the standalone client and the integration require Python 3.14+. The
+integration targets HA 2026.8.0+. CI uses Python 3.14 from `.python-version`
+for all jobs and tests the client without HA installed.
 
 ```python
 from bleak import BleakClient
