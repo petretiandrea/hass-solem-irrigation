@@ -1,0 +1,17 @@
+start_irrigation:
+  target:
+    entity:
+      domain: button
+      integration: solem_woobee
+      supported_features:
+        - 1
+  fields:
+    minutes:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 279620
+          step: 1
+          mode: box
+          unit_of_measurement: min

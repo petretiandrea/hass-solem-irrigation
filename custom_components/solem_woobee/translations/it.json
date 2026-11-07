@@ -51,6 +51,26 @@
       "valve_fault": {
         "name": "Guasto valvola zona {zone}"
       }
+    },
+    "button": {
+      "start_zone": {
+        "name": "Avvia zona {zone} (1 minuto)"
+      },
+      "stop_all": {
+        "name": "Arresta tutta l’irrigazione"
+      }
+    }
+  },
+  "services": {
+    "start_irrigation": {
+      "name": "Avvia irrigazione",
+      "description": "Avvia una zona per un numero intero di minuti. Arrestare prima eventuale irrigazione attiva.",
+      "fields": {
+        "minutes": {
+          "name": "Minuti",
+          "description": "Durata intera in minuti (1–279620)."
+        }
+      }
     }
   }
 }

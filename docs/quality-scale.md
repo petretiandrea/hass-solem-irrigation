@@ -23,14 +23,14 @@ Sources reviewed:
 ## Remaining acceptance work
 
 Bronze is not claimed: branding and dependency provenance remain to be reviewed,
-and command-platform behavior remains to be verified in SBR-94. The embedded
+and hardware command-platform behavior remains to be verified. The embedded
 client is an intentional custom-integration architecture decision, not a claimed
 exemption from Core distribution requirements.
 
 Silver is not claimed: the HA adapter coverage gate excludes `woobee_api`, whose
 unit tests run separately. The whole-integration coverage requirement remains
 TODO until every embedded module is assessed along with the final platforms.
-Command errors remain pending for SBR-94. Read platforms
+Command errors are covered by SBR-94 simulations. Read platforms
 explicitly declare parallel update behavior. Fixed-key BLE has no user credentials or reauthentication flow; that
 exemption is documented rather than inventing a cloud login.
 
@@ -93,3 +93,37 @@ Sources:
 The checklist records these rules individually. The adapter coverage gate does
 not establish whole-integration Silver compliance; branding, library provenance,
 embedded-client coverage and remaining checklist items still prevent a tier claim.
+
+## SBR-94 manual commands
+
+Button platform selected because start is timed and stop affects the whole
+controller; no invented per-zone stop or retained switch state. See
+`docs/manual-irrigation.md` for protocol mappings, duration units/wire limits,
+examples, error semantics, external-client races and supervised hardware steps.
+The Sorgenia template's platform separation, shared coordinator, stable entity
+identity and translations are retained.
+
+Affected rules: action-setup/docs-actions (entity action registered during integration setup with schema and services.yaml), action-exceptions (validation errors,
+transport/auth/timeout/invalid-response failures and unconfirmed state),
+parallel-updates (one coordinator lock across polling/commands), and entity
+lifecycle/identity/device/name/translations/icons/availability. Evidence:
+`tests/integration/test_commands.py` plus the existing platform/lifecycle tests.
+No optimistic success or automatic command retries; post-command reads publish
+actual reported state. An ambiguous command failure requires state verification
+before a user retries. No confirmed API rejection code or settling interval is
+invented. Exception translations remain TODO for Gold.
+
+The adapter coverage gate includes button.py automatically. Hardware procedure
+is documented but has not been executed; firmware latency, physical valve
+behavior, maximum practical duration and battery impact remain unverified.
+Existing branding, client provenance, whole-client coverage, diagnostics and
+strict typing TODOs remain. No Quality Scale tier is claimed.
+
+Validation for SBR-94: Python 3.14.10; 34 client unittests; 67 integration tests
+on each of HA 2026.8.0 / pytest plugin 0.13.354 and HA 2026.10.4 / plugin
+0.13.375. Per-module line/branch coverage is 100% for all 12 adapter modules;
+`check_ha_coverage.py`, compileall and git diff whitespace checks pass. The
+minimum-version suite emits pytest-socket warnings from HA Bluetooth setup;
+all tests pass without hardware/network access. CI pins compatible test plugins
+per HA version and runs the official hassfest action. Whole-client coverage and
+the remaining tier TODOs above are not implied by these adapter results.

@@ -312,3 +312,14 @@ records implemented rules, pending work and justified exemptions. It is a
 project checklist, not an awarded Home Assistant tier. New platforms must
 complete their entity-specific rules and lifecycle tests before being marked
 done. See [audit and validation](docs/quality-scale.md).
+
+### Manual irrigation commands
+
+Four **Start zone N (1 minute)** buttons run individual zones. **Stop all
+irrigation** stops the entire controller, including externally started runs.
+For a custom duration, use `solem_woobee.start_irrigation` targeting a start button
+with a whole `minutes` value from 1 to 279620 (wire limit, not a recommended run).
+Starts are rejected while any zone is active. Commands are never automatically
+retried; failures and unconfirmed outcomes raise HA action errors.
+See [manual irrigation](docs/manual-irrigation.md) for examples, platform choice,
+consistency/error semantics and the supervised real-device verification steps.
