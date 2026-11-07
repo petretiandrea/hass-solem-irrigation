@@ -1,15 +1,20 @@
-"""Entry-scoped data; BLE sessions are opened only for individual operations."""
+"""Controller snapshots and entry-scoped coordinator type."""
 from dataclasses import dataclass
-from .woobee_api import WooBeeDeviceInfo, WooBeeState
+from typing import TYPE_CHECKING
 
 from homeassistant.config_entries import ConfigEntry
 
+from .woobee_api import WooBeeDeviceInfo, WooBeeState
 
-@dataclass
+if TYPE_CHECKING:
+    from .coordinator import WooBeeCoordinator
+
+
+@dataclass(frozen=True)
 class WooBeeData:
     address: str
     device_info: WooBeeDeviceInfo
     state: WooBeeState
 
 
-type WooBeeConfigEntry = ConfigEntry[WooBeeData]
+type WooBeeConfigEntry = ConfigEntry[WooBeeCoordinator]

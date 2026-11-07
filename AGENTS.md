@@ -35,6 +35,13 @@ Confirmed device: WB-4, type 180, firmware 7.0.2. GATT family:
 Do not generalize protocol support to other SOLEM product types without APK or
 hardware evidence.
 
+## Home Assistant quality
+
+Use `quality_scale.yaml` and `docs/quality-scale.md` as acceptance criteria.
+Update evidence/status when changing behavior; do not claim a tier while rules
+remain TODO. Preserve unknown values as None and let real entity subscriptions
+own coordinator polling. New platforms must verify HA states and registry IDs.
+
 ## Verify
 
 ```bash

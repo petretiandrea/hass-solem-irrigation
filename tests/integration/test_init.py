@@ -3,10 +3,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from homeassistant.const import CONF_ADDRESS
-from homeassistant.exceptions import ConfigEntryError, ConfigEntryNotReady
+from homeassistant.config_entries import ConfigEntryState
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solem_woobee import async_setup_entry, async_unload_entry
+from test_coordinator import snapshot
 from custom_components.solem_woobee.const import DOMAIN
 from custom_components.solem_woobee.connection import async_validate_device
 from custom_components.solem_woobee.woobee_api import AuthenticationError, ConnectivityError, InvalidResponseError
@@ -17,7 +18,7 @@ ADDRESS = "aa:bb:cc:dd:ee:ff"
 async def test_setup_unload_reload(hass):
     entry = MockConfigEntry(domain=DOMAIN, unique_id=ADDRESS, data={CONF_ADDRESS: ADDRESS})
     entry.add_to_hass(hass)
-    with patch("custom_components.solem_woobee.async_validate_device", return_value=object()) as validate:
+    with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()) as validate:
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
         assert await hass.config_entries.async_reload(entry.entry_id)
@@ -26,16 +27,13 @@ async def test_setup_unload_reload(hass):
         assert await hass.config_entries.async_unload(entry.entry_id)
 
 
-@pytest.mark.parametrize(("error", "expected"), [
-    (ConnectivityError(), ConfigEntryNotReady),
-    (AuthenticationError(), ConfigEntryError),
-    (InvalidResponseError(), ConfigEntryError),
-])
-async def test_setup_errors(hass, error, expected):
+@pytest.mark.parametrize("error", [ConnectivityError(), AuthenticationError(), InvalidResponseError()])
+async def test_setup_errors(hass, error):
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS})
-    with patch("custom_components.solem_woobee.async_validate_device", side_effect=error):
-        with pytest.raises(expected):
-            await async_setup_entry(hass, entry)
+    entry.add_to_hass(hass)
+    with patch("custom_components.solem_woobee.coordinator.async_validate_device", side_effect=error):
+        assert not await hass.config_entries.async_setup(entry.entry_id)
+        assert entry.state is ConfigEntryState.SETUP_RETRY
 
 
 @pytest.mark.parametrize("failure", [None, ConnectivityError(), AuthenticationError()])

@@ -1,0 +1,195 @@
+# Project checklist only: no official tier is claimed.
+# Evidence and remaining work: docs/quality-scale.md
+rules:
+  action-setup:
+    status: exempt
+    comment: No custom actions, trigger or condition platforms are exposed. Revisit with SBR-94.
+  docs-actions:
+    status: exempt
+    comment: No custom actions, trigger or condition platforms are exposed. Revisit with SBR-94.
+  docs-conditions:
+    status: exempt
+    comment: No custom actions, trigger or condition platforms are exposed. Revisit with SBR-94.
+  docs-triggers:
+    status: exempt
+    comment: No custom actions, trigger or condition platforms are exposed. Revisit with SBR-94.
+  appropriate-polling:
+    status: done
+    comment: Five-minute conservative BLE interval; only real subscribers activate polling. See docs/coordinator.md;
+      battery impact remains unmeasured.
+  brands:
+    status: todo
+    comment: Verify or submit WooBee branding in the Home Assistant brands repository.
+  common-modules:
+    status: done
+    comment: const.py, data.py and coordinator.py separate constants, entry runtime types and shared refresh
+      ownership.
+  runtime-data:
+    status: done
+    comment: const.py, data.py and coordinator.py separate constants, entry runtime types and shared refresh
+      ownership.
+  config-flow:
+    status: done
+    comment: Bluetooth selection validates identity/state before creating an entry; normalized address
+      prevents duplicates. tests/integration/test_config_flow.py.
+  test-before-configure:
+    status: done
+    comment: Bluetooth selection validates identity/state before creating an entry; normalized address
+      prevents duplicates. tests/integration/test_config_flow.py.
+  unique-config-entry:
+    status: done
+    comment: Bluetooth selection validates identity/state before creating an entry; normalized address
+      prevents duplicates. tests/integration/test_config_flow.py.
+  config-flow-test-coverage:
+    status: done
+    comment: Flow modules have 100% line/branch coverage in integration tests.
+  dependency-transparency:
+    status: todo
+    comment: Embedded woobee_api is the agreed custom-integration architecture. A Core submission requires
+      reviewing library packaging, license and public release provenance; no exemption claimed.
+  docs-high-level-description:
+    status: done
+    comment: README.md describes WB-4 BLE scope, manual installation/configuration and removal.
+  docs-installation-instructions:
+    status: done
+    comment: README.md describes WB-4 BLE scope, manual installation/configuration and removal.
+  docs-removal-instructions:
+    status: done
+    comment: README.md describes WB-4 BLE scope, manual installation/configuration and removal.
+  entity-event-setup:
+    status: done
+    comment: CoordinatorEntity owns subscription lifecycle; no synthetic listener. Lifecycle regression
+      test covers add/remove and unload.
+  entity-unique-id:
+    status: todo
+    comment: Base classes provide normalized zone IDs and has_entity_name. Validate final controller/zone
+      entity IDs and names through SBR-93/SBR-94 platforms.
+  has-entity-name:
+    status: todo
+    comment: Base classes provide normalized zone IDs and has_entity_name. Validate final controller/zone
+      entity IDs and names through SBR-93/SBR-94 platforms.
+  test-before-setup:
+    status: done
+    comment: async_config_entry_first_refresh completes before registry and platform setup; failures retry
+      setup.
+  action-exceptions:
+    status: todo
+    comment: SBR-94 must define action error handling and serialization with coordinator reads; platforms
+      must explicitly declare parallel update behavior.
+  parallel-updates:
+    status: todo
+    comment: SBR-94 must define action error handling and serialization with coordinator reads; platforms
+      must explicitly declare parallel update behavior.
+  config-entry-unloading:
+    status: done
+    comment: Setup/unload/reload, timer shutdown and failed platform unload tested in tests/integration.
+  docs-configuration-parameters:
+    status: done
+    comment: README.md documents BLE address selection, HA/Python prerequisites and Bluetooth reachability;
+      no user credentials required.
+  docs-installation-parameters:
+    status: done
+    comment: README.md documents BLE address selection, HA/Python prerequisites and Bluetooth reachability;
+      no user credentials required.
+  entity-unavailable:
+    status: todo
+    comment: Base classes inherit coordinator availability; missing duration returns None. Confirm unknown/unavailable
+      HA states through actual platforms in SBR-93/SBR-94.
+  integration-owner:
+    status: done
+    comment: manifest.json codeowners names petretiandrea.
+  log-when-unavailable:
+    status: todo
+    comment: Coordinator supplies transition logging; add assertions for once-only failure/recovery logging
+      before marking complete.
+  reauthentication-flow:
+    status: exempt
+    comment: 'No user account or renewable credential: fixed protocol key and fresh challenge on every
+      BLE connection. Rejection is retried with a new session.'
+  test-coverage:
+    status: todo
+    comment: HA wrapper modules gated above 95% per module. Embedded client modules and final platforms
+      need complete coverage assessment; wrapper results alone do not meet the whole-integration rule.
+  devices:
+    status: todo
+    comment: Physical controller registered with normalized BLE ID and zone DeviceInfo association. Verify
+      actual entity registry associations once platforms exist.
+  diagnostics:
+    status: todo
+    comment: Diagnostics redaction and a verified Bluetooth advertisement matcher are not implemented.
+  discovery:
+    status: todo
+    comment: Diagnostics redaction and a verified Bluetooth advertisement matcher are not implemented.
+  discovery-update-info:
+    status: todo
+    comment: Diagnostics redaction and a verified Bluetooth advertisement matcher are not implemented.
+  docs-data-update:
+    status: done
+    comment: README.md and docs/coordinator.md describe WB-4 firmware scope, read snapshots, missing values,
+      polling and hardware-validation limits.
+  docs-known-limitations:
+    status: done
+    comment: README.md and docs/coordinator.md describe WB-4 firmware scope, read snapshots, missing values,
+      polling and hardware-validation limits.
+  docs-supported-devices:
+    status: done
+    comment: README.md and docs/coordinator.md describe WB-4 firmware scope, read snapshots, missing values,
+      polling and hardware-validation limits.
+  docs-supported-functions:
+    status: done
+    comment: README.md and docs/coordinator.md describe WB-4 firmware scope, read snapshots, missing values,
+      polling and hardware-validation limits.
+  docs-examples:
+    status: todo
+    comment: Complete user documentation with final entity platforms and hardware validation.
+  docs-troubleshooting:
+    status: todo
+    comment: Complete user documentation with final entity platforms and hardware validation.
+  docs-use-cases:
+    status: todo
+    comment: Complete user documentation with final entity platforms and hardware validation.
+  dynamic-devices:
+    status: exempt
+    comment: One fixed four-zone WB-4 per config entry; no dynamically added child hardware.
+  entity-category:
+    status: todo
+    comment: Select and test entity metadata in SBR-93/SBR-94; no final platform entities exist yet.
+  entity-device-class:
+    status: todo
+    comment: Select and test entity metadata in SBR-93/SBR-94; no final platform entities exist yet.
+  entity-disabled-by-default:
+    status: todo
+    comment: Select and test entity metadata in SBR-93/SBR-94; no final platform entities exist yet.
+  entity-translations:
+    status: todo
+    comment: Select and test entity metadata in SBR-93/SBR-94; no final platform entities exist yet.
+  icon-translations:
+    status: todo
+    comment: Select and test entity metadata in SBR-93/SBR-94; no final platform entities exist yet.
+  exception-translations:
+    status: todo
+    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
+      flows before claiming Gold.
+  reconfiguration-flow:
+    status: todo
+    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
+      flows before claiming Gold.
+  repair-issues:
+    status: todo
+    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
+      flows before claiming Gold.
+  stale-devices:
+    status: todo
+    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
+      flows before claiming Gold.
+  async-dependency:
+    status: done
+    comment: Embedded client uses asynchronous BLE transport, bounded operations and session cleanup;
+      client unit tests cover ownership and cancellation.
+  inject-websession:
+    status: exempt
+    comment: Local BLE integration; no HTTP client or web session.
+  strict-typing:
+    status: todo
+    comment: Complete strict type checking for wrapper and embedded client; no strict typing gate currently
+      runs.

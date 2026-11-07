@@ -6,3 +6,6 @@ MySOLEM.apk
 
 .venv-*/
 .pytest_cache/
+.coverage
+coverage.json
+htmlcov/

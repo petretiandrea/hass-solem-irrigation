@@ -2,6 +2,9 @@
 
 BLE client for WooBee V2 / WB-4 firmware 7.0.2.
 
+Home Assistant shared polling, availability and device registry design:
+[coordinator documentation](docs/coordinator.md).
+
 ```bash
 python -m pip install -e .
 python scripts/inspect_woobee.py
@@ -221,8 +224,9 @@ failure, not confirmed credential rejection. Each normalized BLE address can
 be configured once. Connections and notifications are released after each
 validation; unavailable controllers retry setup through Home Assistant.
 
-This initial skeleton does not expose entities or start background polling;
-those are implemented in SBR-92 and SBR-93. The client is embedded, not fetched
+The coordinator performs an initial read during setup. Periodic polling runs
+every five minutes only while entities subscribe; with no active entities it
+stops automatically. Entity platforms are introduced in SBR-93/SBR-94. The client is embedded, not fetched
 from PyPI, and shares the integration version in `manifest.json`.
 
 Integration tests: install `requirements_test.txt` and run
@@ -233,3 +237,20 @@ The local client wheel exposes `woobee_api` directly, so CLI tools and client
 tests do not load the Home Assistant integration package. HACS still installs
 the client at `custom_components/solem_woobee/woobee_api`; integration modules
 use relative imports. All Python imports stay at module top level.
+
+
+### Remove the integration
+
+In **Settings → Devices & services → SOLEM WooBee**, delete the controller entry.
+Repeat for each configured controller. To uninstall the custom integration,
+remove `custom_components/solem_woobee` (or uninstall through HACS if installed
+there), then restart Home Assistant. Removing the integration does not modify
+the controller's locally stored irrigation programs.
+
+### Quality policy
+
+[Quality Scale tracking](custom_components/solem_woobee/quality_scale.yaml)
+records implemented rules, pending work and justified exemptions. It is a
+project checklist, not an awarded Home Assistant tier. New platforms must
+complete their entity-specific rules and lifecycle tests before being marked
+done. See [audit and validation](docs/quality-scale.md).
