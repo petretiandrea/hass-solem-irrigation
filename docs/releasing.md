@@ -50,9 +50,8 @@ Record the candidate SHA, version, date, tester, HA/Python/HACS versions, Blueto
 adapter/proxy, model/type/firmware and results in a release PR. All boxes below
 are pending; simulated tests cannot satisfy the physical checks.
 
-- [ ] Resolve licensing/provenance before distribution: this checkout has no
-      LICENSE file and GitHub reports no detected license. The maintainer must
-      select/confirm licensing; this task does not invent a grant of rights.
+- [ ] Confirm GitHub detects the MIT LICENSE approved for this repository and
+      review dependency/protocol provenance before distribution.
 - [ ] All candidate CI jobs pass, including hassfest and HACS; review Quality
       Scale TODOs without claiming a tier. Confirm no independent client version.
 - [ ] Fresh HA 2026.8.0 profile with working Bluetooth and no previous component,
@@ -111,8 +110,8 @@ gh repo edit petretiandrea/hass-solem-irrigation \
   --add-topic bluetooth --add-topic irrigation --add-topic solem-woobee
 ```
 
-The repository must also contain a maintainer-approved `LICENSE` recognized by
-GitHub. Selecting that license is a prerequisite, not a check to disable.
+The repository includes the MIT `LICENSE`, selected with the owner's authorization,
+consistent with hass-sorgenia. Confirm GitHub recognizes it after merge.
 Do not add license, description or topics to HACS `ignore` to obtain a green job.
 After applying settings and merging the approved license, rerun HACS on the
 candidate branch and inspect the result. No tag or release is required.

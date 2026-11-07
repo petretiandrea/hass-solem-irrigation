@@ -261,3 +261,13 @@ not granted to this session. `docs/releasing.md` supplies the exact maintainer
 command. License selection is awaiting the repository owner's instruction.
 These checks remain enabled; no additional HACS ignores or Quality Scale tier
 claims are introduced. HACS remains failing until those prerequisites are met.
+
+### Owner-authorized license selection
+
+The owner delegated license selection. Added the standard MIT LICENSE for both
+integration and embedded client, consistent with hass-sorgenia, plus SPDX metadata
+and license-file inclusion in pyproject.toml and a README link. This resolves the
+missing source license; GitHub/HACS detection must be confirmed after merge.
+Repository description/topics still require administration permission (prior API
+attempts returned HTTP 403). Dependency/protocol provenance and the remaining
+Quality Scale TODOs remain open; no tier is claimed. No release is published.

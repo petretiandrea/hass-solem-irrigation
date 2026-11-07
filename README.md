@@ -400,3 +400,7 @@ consistency, compatibility and supervised hardware verification.
 
 Diagnostics, automated test evidence and the pending WB-4 hardware validation
 procedure are documented in [diagnostics and validation](docs/diagnostics-and-validation.md).
+
+## License
+
+The integration and embedded client are distributed under the [MIT License](LICENSE).
