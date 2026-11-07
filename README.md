@@ -271,6 +271,32 @@ alert meanings are not exposed because the shared client provides no verified
 measurement/interpretation for them. No configuration entities or additional
 platforms are justified by these read-only fields.
 
+### Examples and troubleshooting
+
+To monitor irrigation, add the four **Zone N irrigating** binary sensors and
+**Zone N remaining time** sensors to a dashboard. Use the entity picker to select
+them: entity IDs depend on the controller name and server language. A remaining
+time of zero is reported idle time; unknown means its duration page was absent.
+
+To receive valve-fault notifications, create an automation in **Settings →
+Automations & scenes**. Choose an **Entity → State** trigger, select the zone's
+**valve fault** entity and set **To** to **On**. Add your preferred notification
+action. Repeat for the other zones. This reports controller faults and does not
+prove whether water is flowing.
+
+If all state entities become unavailable, check **Last read successful**, the
+integration logs and the controller's Bluetooth reachability. Keep it within
+range of a connectable HA Bluetooth adapter/proxy and disconnect other apps
+that may occupy its BLE connection slot. Wait for the next five-minute poll or
+reload the integration after restoring connectivity. Repeated failure logs are
+suppressed; recovery is logged once. There is no password to reset.
+
+If only a duration is unknown, the shared read succeeded but the controller
+omitted that optional page. Do not replace it with zero. If a diagnostic entity
+is missing from the dashboard, check whether it is disabled in the device's
+entity settings. Raw battery values cannot establish battery charge; there is
+no supported percentage threshold for low-battery automations.
+
 ### Remove the integration
 
 In **Settings → Devices & services → SOLEM WooBee**, delete the controller entry.

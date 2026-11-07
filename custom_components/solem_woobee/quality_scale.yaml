@@ -99,9 +99,9 @@ rules:
     status: done
     comment: manifest.json codeowners names petretiandrea.
   log-when-unavailable:
-    status: todo
-    comment: Coordinator supplies transition logging; add assertions for once-only failure/recovery logging
-      before marking complete.
+    status: done
+    comment: Coordinator logs first failure and recovery without per-poll duplication; test_failure_and_recovery_logged_once
+      verifies two consecutive failures and two successful reads.
   reauthentication-flow:
     status: exempt
     comment: 'No user account or renewable credential: fixed protocol key and fresh challenge on every
@@ -140,14 +140,17 @@ rules:
     comment: README.md and docs/coordinator.md describe WB-4 firmware scope, read snapshots, missing values,
       polling and hardware-validation limits.
   docs-examples:
-    status: todo
-    comment: Complete user documentation with final entity platforms and hardware validation.
+    status: done
+    comment: README provides dashboard entity-picker and valve-fault automation examples without assuming
+      entity IDs.
   docs-troubleshooting:
-    status: todo
-    comment: Complete user documentation with final entity platforms and hardware validation.
+    status: done
+    comment: README covers failed reads, BLE range/connection slots, next poll/reload, optional unknown
+      pages and enabling diagnostic entities.
   docs-use-cases:
-    status: todo
-    comment: Complete user documentation with final entity platforms and hardware validation.
+    status: done
+    comment: README explains irrigation monitoring and per-zone valve-fault notifications, with reported-state
+      versus water-flow limitations.
   dynamic-devices:
     status: exempt
     comment: One fixed four-zone WB-4 per config entry; no dynamically added child hardware.
@@ -168,8 +171,9 @@ rules:
     comment: strings.json and en/it translations cover all read entities and zone placeholders; actual
       HA names verified in both languages.
   icon-translations:
-    status: todo
-    comment: Read platforms use default HA device-class icons; custom icon translations remain to be reviewed.
+    status: done
+    comment: icons.json supplies icons by translation key for enabled/manual/input flags and raw battery.
+      Duration, running, problem and connectivity retain HA device-class icons; no Python icon overrides.
   exception-translations:
     status: todo
     comment: Review translated failures, address reconfiguration and applicable repair/device cleanup

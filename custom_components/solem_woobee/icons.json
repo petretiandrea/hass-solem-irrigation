@@ -1,0 +1,12 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "enabled": { "default": "mdi:sprinkler" },
+      "manual": { "default": "mdi:hand-back-right" },
+      "sensor_open": { "default": "mdi:electric-switch" }
+    },
+    "sensor": {
+      "battery_raw": { "default": "mdi:battery-unknown" }
+    }
+  }
+}
