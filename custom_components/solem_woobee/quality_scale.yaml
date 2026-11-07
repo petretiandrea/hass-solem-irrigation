@@ -74,7 +74,7 @@ rules:
       setup.
   action-exceptions:
     status: done
-    comment: Command validation, transport failures and unconfirmed outcomes raise HA errors; test_commands.py. test_privacy.py verifies sanitized command tracebacks.
+    comment: Command validation, transport failures and unconfirmed outcomes raise HA errors; test_commands.py. test_privacy.py verifies anonymized explicit causes with client types and original traceback locations.
   parallel-updates:
     status: done
     comment: All platforms set PARALLEL_UPDATES=0; coordinator lock serializes commands and reads. test_commands.py.
@@ -99,7 +99,7 @@ rules:
   log-when-unavailable:
     status: done
     comment: Coordinator logs first failure and recovery without per-poll duplication; test_failure_and_recovery_logged_once
-      verifies two consecutive failures and two successful reads. test_privacy.py checks secret-bearing errors at DEBUG and fresh-session recovery.
+      verifies two consecutive failures and two successful reads. test_privacy.py checks secret-bearing errors at DEBUG, anonymized causal chains and fresh-session recovery.
   reauthentication-flow:
     status: exempt
     comment: 'No user account or renewable credential: fixed protocol key and fresh challenge on every

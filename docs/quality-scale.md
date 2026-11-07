@@ -156,8 +156,10 @@ The diagnostics rule is done independently of discovery, which remains TODO.
 `test_privacy.py` verifies secret-bearing auth, connectivity, invalid-response and
 timeout errors at DEBUG, one outage/recovery log, sanitized command tracebacks,
 and successful fresh-session recovery on the next poll after authentication
-rejection. Outward transport exception chains are suppressed rather than dumping
-arbitrary client messages. Existing flow/lifecycle/entity/command tests continue
+rejection. Outward errors explicitly chain anonymized client exceptions, retaining
+known client types, traceback locations and cause/context links while removing
+arbitrary messages, notes and custom attributes. Existing flow/lifecycle/entity/
+command tests continue
 to cover the complete HA surface; all fixtures and BLE failures are simulated.
 No cloud token expiry flow is applicable to this fixed-key BLE integration.
 
@@ -184,3 +186,30 @@ The Sorgenia template's `async_get_config_entry_diagnostics` entry point and
 coordinator runtime pattern were checked directly. WooBee uses an operational
 field allowlist instead of serializing/redacting whole entry data and arbitrary
 exception strings, so new identity/session fields remain excluded by default.
+
+
+### SBR-95 PR review: retain underlying errors
+
+Replaced all three coordinator `from None` sites (authentication/read failures
+and command failures) with explicit anonymized exception causes. Known client
+exception types and their original traceback locations remain visible. Nested
+transport errors retain class names and traceback locations; causal/context
+links and suppression semantics survive, including shared/cyclic links. Messages,
+notes and custom attributes are omitted because they can carry identifiers or
+credentials. The original exception is never mutated. No raw exception text is
+logged as a fallback.
+
+`test_privacy.py` verifies read and command causes for auth/connectivity/response/
+session-timeout/timeout failures, nested explicit and implicit transport failures,
+traceback identity, notes/filename redaction, cycle handling and unchanged original
+exceptions. The existing DEBUG outage/recovery tests still enforce private logs.
+Applicable rules remain action-exceptions, log-when-unavailable and test-coverage;
+previous checklist TODOs and hardware limitations are unchanged.
+
+Review validation: 100 integration tests pass on each of HA 2026.10.4 and
+2026.8.0 with Python 3.14.10; all 14 adapter modules retain 100% line/branch
+coverage and pass the >95% per-module gate. All 34 client unittests, compileall,
+git diff --check and full official hassfest (Core 2026.10.4: 1 integration,
+0 invalid) pass. The older HA version still emits the same 54 mocked-Bluetooth
+pytest-socket warnings. The integration-only coverage run is now 55% overall;
+whole-client coverage and hardware validation remain pending, with no tier claim.

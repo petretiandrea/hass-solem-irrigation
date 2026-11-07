@@ -26,9 +26,13 @@ has no cloud account, expiring token or user credential reauth flow. A session
 expiry is represented by failed authentication or transport timeout and tested
 with a new connection on the next poll. Command errors are surfaced to the caller;
 unknown outcomes must be checked on the device before another command is sent.
-Arbitrary lower-layer exception text is suppressed in outward exception chains,
-including at DEBUG level. This applies to integration-owned messages, not logs
-emitted independently by HA, Bleak or the host Bluetooth stack.
+Outward exceptions explicitly chain an anonymized copy of the client failure.
+Known client exception types, traceback locations and cause/context links are
+retained, including at DEBUG level. Arbitrary messages, notes and custom
+attributes are excluded; unknown transport exception types are represented by a
+RuntimeError containing their original class name and traceback. The original
+client exception is not modified. This applies to integration-owned messages,
+not logs emitted independently by HA, Bleak or the host Bluetooth stack.
 
 ## Automated evidence (all simulated)
 
@@ -43,7 +47,7 @@ real HA setup/services/states/registries with mocked BLE/client boundaries:
 | Shared polling, unknown/zero data, offline/recovery, listener teardown | `test_coordinator.py`, `test_entities.py` |
 | Entity states, metadata, translations, identity stability | `test_entities.py`, `test_commands.py` |
 | Commands, timeouts, rejected auth, serialization, no replay, recovery | `test_commands.py` |
-| Secret-bearing failures at DEBUG and command traceback suppression; fresh scope after session rejection | `test_privacy.py` |
+| Secret-bearing failures at DEBUG and anonymized command exception chains; fresh scope after session rejection | `test_privacy.py` |
 | Anonymous cached diagnostics, stale/empty/partial snapshots, no I/O | `test_diagnostics.py` |
 | Real protocol parsing, fresh handshake and cleanup over fake BLE | `tests/test_session.py`, `tests/test_client.py` |
 
