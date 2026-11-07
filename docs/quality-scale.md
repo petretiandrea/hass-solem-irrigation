@@ -245,3 +245,7 @@ fresh-install, HACS download or whole-integration Quality Scale compliance.
 Full official hassfest from Core tag 2026.10.4 (357cae5) also passes locally:
 1 integration, 0 invalid integrations. Remote HACS validation remains a CI check;
 its brands exception is explicit and does not close the branding TODO.
+GitHub Actions run/check status could not be read by this session: GitHub App
+returns HTTP 403 / Resource not accessible by integration. A maintainer must
+review the remote jobs (especially HACS) before merging; local checks are not a
+claim that the remote workflow passed.
