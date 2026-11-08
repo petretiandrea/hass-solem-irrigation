@@ -97,18 +97,20 @@ Stable versions use MAJOR.MINOR.PATCH and tags use `vMAJOR.MINOR.PATCH`.
 
 ## Repository setup
 
-Create the Actions secret **RELEASE_PLEASE_TOKEN** with a fine-grained PAT limited
-to this repository, with **Contents**, **Pull requests** and **Issues** read/write
-permissions (metadata read is implicit). A GitHub App installation token with
-these permissions is also supported, but must be refreshed for each run.
-The token must be allowed to create branches, PRs, labels and draft releases.
-Branch protection should require all checks and review on release PRs; the bot
-must not bypass it. No npm/PyPI credentials are required.
+The workflow uses the automatically supplied GITHUB_TOKEN with Contents,
+Pull requests and Issues write permissions. No additional token secret or PAT
+is required. Under Settings → Actions → General → Workflow permissions, enable
+**Allow GitHub Actions to create and approve pull requests**. Organization policy
+may restrict this setting. Branch protection should require candidate checks
+and human review; the bot must not bypass it.
 
-The workflow intentionally requires this secret: PRs created with the default
-`GITHUB_TOKEN` do not trigger the normal PR CI. Do not replace the token with that
-default without arranging equivalent candidate validation. See the
-[Release Please credentials guidance](https://github.com/googleapis/release-please-action#github-credentials).
+When Release Please opens or updates a PR with GITHUB_TOKEN, its pull_request
+CI runs require approval. A maintainer with write access must select
+**Approve workflows to run** in the PR merge box, then wait for all checks.
+Approve again after bot updates if prompted. Bot push/tag/release events do not
+trigger other workflows automatically; release validation uses the approved PR
+checks and the normal main CI after the maintainer merges the release PR.
+See [GitHub workflow triggering rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow).
 
 ## Authorized release procedure
 
@@ -117,7 +119,8 @@ default without arranging equivalent candidate validation. See the
    rerun manually from main. Review the proposed version and changelog; add
    migration instructions, compatibility and unresolved limits. Keep the
    generated release metadata and `autorelease: pending` label intact.
-2. Complete the pre-publication checklist and require all candidate CI checks,
+2. Approve the generated PR workflows using **Approve workflows to run**.
+   Complete the pre-publication checklist and require all candidate CI checks,
    including HACS, hassfest, typing and both HA test targets, before merging the
    release PR. This setup PR does not publish a release. Do not merge the first
    generated release PR until its source-install acceptance evidence is ready.
@@ -127,7 +130,7 @@ default without arranging equivalent candidate validation. See the
    candidate SHA to pass; verify tag/target and manifest version, review the notes,
    and obtain first-release authorization before publishing through GitHub
    Releases. Complete and record the fresh HACS install check above.
-4. If automation fails, correct the token/configuration or failing CI and rerun
+4. If automation fails, check Actions permissions, PR workflow approval and CI, then rerun
    **Release Please** on main. Inspect existing release PRs/drafts before any
    manual recovery; do not delete lifecycle labels or move published tags.
 5. For rollback, reinstall a previously validated HACS version and restart HA.
