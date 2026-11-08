@@ -282,3 +282,125 @@ embedding is not an exemption. The MIT source license exists. Fresh main HACS
 run 42379421457 passes with the brands ignore; description/topics/license failures
 from SBR-96 are resolved. Installed branding and candidate checks remain pending.
 No release, hardware command or official tier is authorized by this audit.
+
+## SBR-101 address reconfiguration and discovery evidence blocker
+
+Reviewed the official [discovery](https://contributors.home-assistant.io/core/quality-scale/discovery/),
+[discovery-update-info](https://contributors.home-assistant.io/core/quality-scale/discovery-update-info/)
+and [reconfiguration-flow](https://contributors.home-assistant.io/core/quality-scale/reconfiguration-flow/)
+rules. This change implements the independently testable reconfiguration portion;
+SBR-101's verified discovery acceptance remains incomplete.
+
+`config_flow_handler.async_step_reconfigure` validates MAC/CoreBluetooth input,
+requires confirmation and an authenticated read snapshot, and compares the
+candidate serial against the original device registry serial. Missing original
+identity fails closed; missing/mismatched candidate serials also fail. Collisions
+against other entries' connection and frozen identity addresses are checked
+before and after the asynchronous read. Authentication, connectivity, timeout,
+invalid responses, malformed input, cancellation and collision errors preserve
+entry data and allow retry where appropriate. EN/IT form/error text is included.
+
+Identity migration is explicit: freeze the original address in additive entry
+field `identity_address` on first successful reconfiguration, leave config-entry
+unique ID unchanged, and use that frozen address for every platform's entity
+unique ID and device identifier. Only the BLE transport uses the new `address`.
+Entries without the field retain their previous identity calculation. No serial
+ID conversion or registry rewrite is performed. Both old identity and current
+connection addresses remain reserved against duplicate user configuration.
+
+`tests/integration/test_reconfigure.py` exercises the actual HA flow manager,
+update/reload, all error paths and retry, known/missing/mismatched serials,
+cancellation, collisions arising during validation, repeated address changes,
+options preservation, all 23 entity registry records/device association, user
+device naming, old coordinator shutdown and successful unload with no later
+polling. `test_config_flow.py` additionally verifies duplicate user setup at
+both the old and new addresses, unrelated entries and a validation-time race.
+Affected rules: reconfiguration-flow, config-flow-test-coverage,
+unique-config-entry, entity-unique-id, devices and config-entry-unloading.
+
+`docs/bluetooth-discovery.md` records the external evidence blocker and supplies
+a supervised advertisement-only collection procedure. No raw verified WB-4
+advertisement/capture provenance is in the checkout; the historical research
+reference to a bugreport is insufficient to select a matcher. GATT evidence
+for WB-4/type 180/firmware 7.0.2 does not establish advertised service UUIDs or
+stable identity fields. No other SOLEM product support is inferred. Discovery
+and discovery-update-info remain TODO with concrete reasons in the checklist.
+No Bluetooth matcher/automatic update is enabled, hardware accessed or controller
+writes performed. Missing capture evidence prevents completing SBR-101; no
+Quality Scale tier is claimed and all unrelated TODOs remain.
+
+SBR-101 local validation: Python 3.14.10; **118 integration tests pass on each**
+of HA 2026.8.0/plugin 0.13.354 and HA 2026.10.4/plugin 0.13.375. All 14 HA adapter
+modules, including the complete flow handler, have **100% line/branch coverage**;
+the unchanged >95% per-module gate passes on each target. HA 2026.8.0 emits
+73 pytest-socket warnings during mocked Bluetooth setup; no tests fail. All
+34 standalone client unittests, Ruff 0.14.3, distribution/import validation,
+compileall and git diff --check pass. Existing HA matrix, simulated BLE tests
+and coverage scope are unchanged. Integration-only overall coverage remains
+56% including the embedded client; this is not whole-integration Silver evidence.
+
+Full official hassfest from Core tag 2026.10.4 (`357cae5`), with its required
+Ruff 0.16.9 tooling, also passes locally: 1 integration, 0 invalid integrations.
+Local validation does not assert remote CI success.
+
+## SBR-102 translated errors and lifecycle review
+
+Reviewed separately on 2026-11-07:
+- [exception-translations](https://contributors.home-assistant.io/core/quality-scale/exception-translations/):
+  coordinator poll/action errors and duration validation now use domain/key
+  metadata. strings.json and en/it contain matching exception keys and numeric
+  limit placeholders. Client text is not inserted into translations; original
+  ValueError/transport causes remain chained unchanged. Diagnostics allowlisting,
+  command locking, guarded close and no-retry behavior are preserved.
+- [repair-issues](https://contributors.home-assistant.io/core/quality-scale/repair-issues/):
+  exempt for the currently supported surface. There is no user account, renewable
+  credential, known minimum firmware requirement, deprecated configuration or
+  migration needing user confirmation. Reachability, authentication and malformed
+  responses cannot establish a specific required user repair; fresh sessions
+  already permit recovery. Valve fault bits are exposed as diagnostic entities,
+  but the protocol evidence does not establish a safe user repair/reset procedure.
+  Raw battery has no verified low-battery threshold. Do not invent firmware,
+  battery or fault repairs from these signals. Revisit if a verified actionable
+  condition becomes supported. Creation/resolution tests are inapplicable because
+  no repair is created; lifecycle tests assert no issues during outage/recovery.
+- [stale-devices](https://contributors.home-assistant.io/core/quality-scale/stale-devices/):
+  the official single fixed device per config entry exemption applies. WB-4's
+  four zones are fixed entities on that controller, not independently removable
+  hardware. BLE silence is not proof of removal. Keep the controller during an
+  outage; the user removes the integration entry to remove it and all associated
+  entities. No device-removal hook or automatic pruning is appropriate.
+
+`test_translated_validation_and_action_errors` resolves HA exception translations
+in English and Italian, checks placeholders and error metadata, preserves original
+validation/transport causes and prevents writes on invalid/busy requests.
+`test_fixed_controller_entry_removal` covers online/offline removal, recovery,
+registry cleanup and polling shutdown. Existing command/error/entity tests retain
+serialization, cancellation, unload and fresh-session recovery coverage.
+
+No hardware commands are run. No official tier is claimed: branding, dependency
+provenance, whole-client coverage, verified discovery/reconfiguration and strict
+typing remain independent TODOs. Historical validation counts above describe
+previous changes, not this PR.
+
+SBR-102 validation: Python 3.14.10; 104 integration tests pass on each existing
+matrix target, HA 2026.10.4/plugin 0.13.375 and HA 2026.8.0/plugin 0.13.354.
+All 14 adapter modules have 100% line/branch coverage on both targets and satisfy
+the unchanged >95% per-module gate. The older target emits 56 mocked-Bluetooth
+pytest-socket warnings without failures. All 34 standalone simulated client tests,
+Ruff 0.14.3, distribution metadata check, compileall and git diff --check pass.
+The integration-only run still reports 54% overall including the embedded client;
+this does not close SBR-99. Official hassfest/HACS remain enabled in unchanged CI;
+local checks here do not claim their remote results or hardware evidence.
+
+### SBR-101 merge validation (2026-11-08)
+
+Merged main `9ef98a6` (SBR-102), preserving its translated errors and lifecycle
+exemptions alongside the SBR-101 reconfiguration evidence and discovery TODOs.
+The combined branch passes 123 integration tests on each existing HA target
+(2026.8.0/plugin 0.13.354 and 2026.10.4/plugin 0.13.375), with 100% line/branch
+coverage in every one of the 14 adapter modules and the >95% gate passing on
+both. The older target reports 75 mocked-Bluetooth pytest-socket warnings.
+All 34 client tests, Ruff 0.14.3, distribution validation, compileall, diff checks
+and full official hassfest (Core `357cae5`: 1 integration, 0 invalid) pass.
+Discovery still requires supervised WB-4 advertisement evidence; no hardware
+commands were run and no tier is claimed. Remote CI results are not asserted.

@@ -33,7 +33,7 @@ def scope(client):
 
 @pytest.mark.parametrize("value", [True, False, 0, -1, 1.5, "2", None, MAX_MINUTES + 1])
 def test_invalid_duration(value):
-    with pytest.raises(vol.Invalid):
+    with pytest.raises(ServiceValidationError):
         valid_minutes(value)
 
 
@@ -173,7 +173,7 @@ async def test_action_registered_without_entries(hass):
     from_config = {}
     assert await async_setup_component(hass, "solem_woobee", from_config)
     assert hass.services.has_service("solem_woobee", "start_irrigation")
-    with pytest.raises(vol.Invalid):
+    with pytest.raises(ServiceValidationError):
         await hass.services.async_call("solem_woobee", "start_irrigation",
             {"entity_id": "button.missing", "minutes": 1.5}, blocking=True)
 
@@ -334,7 +334,7 @@ async def test_close_unconfirmed_and_invalid_default(hass):
     ) as connect:
         entry = await setup(hass)
         target = entity(hass, "valve", "zone_1").entity_id
-        with pytest.raises(vol.Invalid):
+        with pytest.raises(ServiceValidationError):
             await hass.services.async_call("solem_woobee", "set_default_duration",
                 {"entity_id": target, "minutes": True}, blocking=True)
         assert not entry.options
