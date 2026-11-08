@@ -19,7 +19,8 @@ rules:
       battery impact remains unmeasured.
   brands:
     status: todo
-    comment: Verify or submit WooBee branding in the Home Assistant brands repository.
+    comment: Local brand assets prepared from HA brands db0aad8; custom 2026.3+ route documented in docs/dependency-provenance.md.
+      Upstream solem_woobee absent; installed HA/candidate HACS verification pending; keep ignore until resolved.
   common-modules:
     status: done
     comment: const.py, data.py and coordinator.py separate constants, entry runtime types and shared refresh
@@ -45,8 +46,9 @@ rules:
     comment: Flow modules have 100% line/branch coverage in integration tests.
   dependency-transparency:
     status: todo
-    comment: Embedded woobee_api is the agreed custom-integration architecture. A Core submission requires
-      reviewing library packaging, license and public release provenance; no exemption claimed.
+    comment: docs/dependency-provenance.md audits HA-provided Bleak/cryptography licenses, tags and public builds.
+      Project MIT exists; MySOLEM derivation evidence and embedded release provenance remain incomplete.
+      Custom distribution is intentional, not an exemption; separate Core migration proposal recorded.
   docs-high-level-description:
     status: done
     comment: README.md documents verified WB-4 scope, HACS/manual installation, configuration and removal; docs/releasing.md records pending clean-install acceptance.
@@ -92,7 +94,7 @@ rules:
   entity-unavailable:
     status: done
     comment: Real HA state tests cover unknown partial durations, reported zero, unavailable state on
-      read failure and recovery. Connectivity remains available to report the last read outcome.
+      read failure and recovery. Connectivity remains available to report the last read outcome; Last fetched retains successful-poll time during outages (SBR-106).
   integration-owner:
     status: done
     comment: manifest.json codeowners names petretiandrea.
@@ -105,9 +107,12 @@ rules:
     comment: 'No user account or renewable credential: fixed protocol key and fresh challenge on every
       BLE connection. Rejection is retried with a new session.'
   test-coverage:
-    status: todo
-    comment: HA wrapper modules including valve and read platforms gated above 95% per module. Embedded client modules
-      need complete coverage assessment; wrapper results alone do not meet the whole-integration rule.
+    status: done
+    comment: SBR-99 combines standalone and HA branch coverage independently on HA 2026.8.0 and 2026.10.4;
+      revalidated after merging main cc6aa14 on 2026-11-08 (55 standalone and 126 HA tests per target).
+      all 22 shipped modules measured 100% lines and branches (0/0 where no branches). CI requires >95%
+      separately per metric, rejects missing modules and enforces 100% config-flow coverage. Exact counts
+      and synthetic failure/cancellation/cleanup test evidence are in docs/quality-scale.md. No tier claimed.
   devices:
     status: done
     comment: All 23 registry entities share the normalized controller device; registry associations remain
@@ -117,10 +122,10 @@ rules:
     comment: diagnostics.py exports only allowlisted cached operational fields; no identity, config, raw frames or session secrets. test_diagnostics.py verifies empty, stale and partial data without I/O.
   discovery:
     status: todo
-    comment: A verified Bluetooth advertisement matcher is not implemented.
+    comment: SBR-101 remains blocked on supervised WB-4/type-180 firmware-7.0.2 advertisement bytes and provenance; GATT evidence does not establish a matcher. See docs/bluetooth-discovery.md.
   discovery-update-info:
     status: todo
-    comment: A verified Bluetooth advertisement matcher is not implemented.
+    comment: SBR-101 remains TODO pending verified advertisements and a stable advertised identity; address/name matching cannot safely identify an address change. Frozen legacy registry identities are documented in docs/bluetooth-discovery.md.
   docs-data-update:
     status: done
     comment: README.md and docs/coordinator.md describe WB-4 firmware scope, read snapshots, missing values,
@@ -154,11 +159,11 @@ rules:
     comment: One fixed four-zone WB-4 per config entry; no dynamically added child hardware.
   entity-category:
     status: done
-    comment: Connectivity, clock/input flags, valve faults and raw battery are diagnostic. Operational
+    comment: RSSI and last-fetched timestamp (SBR-106), connectivity, clock/input flags, valve faults and raw battery are diagnostic. Operational
       status remains uncategorized; zone valves and global stop are operational; duration defaults are local HA options.
   entity-device-class:
     status: done
-    comment: Water valves, duration in seconds, running activity, problem flags and read connectivity tested. Unscaled
+    comment: RSSI uses signal_strength/dBm/measurement and last_fetched uses timestamp (SBR-106). Water valves, duration in seconds, running activity, problem flags and read connectivity tested. Unscaled
       battery has no fabricated class, unit or statistics.
   entity-disabled-by-default:
     status: done
@@ -173,21 +178,17 @@ rules:
     comment: icons.json supplies icons by translation key for enabled/manual/input flags and raw battery.
       Duration, running, problem and connectivity retain HA device-class icons; no Python icon overrides.
   exception-translations:
-    status: todo
-    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
-      flows before claiming Gold.
+    status: done
+    comment: Coordinator and duration validation use exceptions keys in strings/en/it with safe limit placeholders; test_errors.py checks HA translations and original causes.
   reconfiguration-flow:
-    status: todo
-    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
-      flows before claiming Gold.
+    status: done
+    comment: SBR-101 adds async_step_reconfigure with authenticated snapshot/known-serial validation, confirmation, collision recheck and update/reload. test_reconfigure.py covers errors/retry/cancel, serial absence/mismatch, repeated address changes preserving all 23 entity records/device/options and unload. Missing original serial fails closed; see docs/bluetooth-discovery.md.
   repair-issues:
-    status: todo
-    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
-      flows before claiming Gold.
+    status: exempt
+    comment: No supported user credential, firmware requirement or configuration migration to repair. BLE/session failures recover on fresh reads; valve faults have no verified software remedy and battery scale is unknown. See SBR-102 review in docs/quality-scale.md.
   stale-devices:
-    status: todo
-    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
-      flows before claiming Gold.
+    status: exempt
+    comment: One fixed WB-4 device per entry; zones are entities, not removable child devices. Official single-device exemption applies. test_fixed_controller_entry_removal verifies online/offline entry removal cleans registry and polling.
   async-dependency:
     status: done
     comment: Reconfirmed in SBR-103; BLETransport and SolemSession await BLE I/O with bounded
@@ -200,6 +201,8 @@ rules:
   strict-typing:
     status: done
     comment: Custom-repository evidence in docs/quality-scale.md (SBR-103); pinned strict mypy
-      checks all 22 adapter/client modules on Python 3.14 in CI. Typed config entries, validated
+      checks all 22 adapter/client modules on Python 3.14 in CI. Merge validation against main
+      953b261 retains the combined all-module coverage gate and types the reconfiguration flow.
+      Typed config entries, validated
       mapping boundaries, and wheel/sdist py.typed checks are included. Core upstreaming still
       requires registration in Core .strict-typing and generated mypy configuration; no tier claimed.

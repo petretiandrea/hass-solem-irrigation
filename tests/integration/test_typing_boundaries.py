@@ -2,8 +2,8 @@
 from unittest.mock import patch
 
 import pytest
-import voluptuous as vol
 from homeassistant.const import CONF_ADDRESS
+from homeassistant.exceptions import ServiceValidationError
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.solem_woobee.config_flow_handler import WooBeeConfigFlow
@@ -21,7 +21,7 @@ async def test_invalid_persisted_address(hass):
 
 
 @pytest.mark.parametrize("durations,error", [([], ValueError), ({1: 2}, ValueError),
-                                                      ({"1": True}, vol.Invalid)])
+                                                      ({"1": True}, ServiceValidationError)])
 async def test_invalid_persisted_durations(hass, durations, error):
     entry = MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS},
                             options={DURATION_OPTIONS: durations})
@@ -46,3 +46,18 @@ async def test_diagnostics_without_polling(hass):
     entry.runtime_data.update_interval = None
     assert (await async_get_config_entry_diagnostics(hass, entry))["poll_interval_seconds"] is None
     await entry.runtime_data.async_shutdown()
+
+
+async def test_invalid_persisted_identity_address(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS, "identity_address": 123})
+    with pytest.raises(ValueError, match="identity address must be a string"):
+        WooBeeCoordinator(hass, entry)
+
+
+async def test_untyped_reconfigure_input(hass):
+    entry = MockConfigEntry(domain=DOMAIN, data={CONF_ADDRESS: ADDRESS})
+    flow = WooBeeConfigFlow()
+    flow.hass = hass
+    with patch.object(flow, "_get_reconfigure_entry", return_value=entry):
+        result = await flow.async_step_reconfigure({CONF_ADDRESS: 123})
+    assert result["errors"] == {"base": "invalid_address"}

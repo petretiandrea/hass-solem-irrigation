@@ -1,6 +1,7 @@
 """Manual commands through HA services and a simulated WooBee client."""
 import asyncio
 from dataclasses import replace
+from datetime import timedelta
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
@@ -33,7 +34,7 @@ def scope(client):
 
 @pytest.mark.parametrize("value", [True, False, 0, -1, 1.5, "2", None, MAX_MINUTES + 1])
 def test_invalid_duration(value):
-    with pytest.raises(vol.Invalid):
+    with pytest.raises(ServiceValidationError):
         valid_minutes(value)
 
 
@@ -173,7 +174,7 @@ async def test_action_registered_without_entries(hass):
     from_config = {}
     assert await async_setup_component(hass, "solem_woobee", from_config)
     assert hass.services.has_service("solem_woobee", "start_irrigation")
-    with pytest.raises(vol.Invalid):
+    with pytest.raises(ServiceValidationError):
         await hass.services.async_call("solem_woobee", "start_irrigation",
             {"entity_id": "button.missing", "minutes": 1.5}, blocking=True)
 
@@ -334,7 +335,7 @@ async def test_close_unconfirmed_and_invalid_default(hass):
     ) as connect:
         entry = await setup(hass)
         target = entity(hass, "valve", "zone_1").entity_id
-        with pytest.raises(vol.Invalid):
+        with pytest.raises(ServiceValidationError):
             await hass.services.async_call("solem_woobee", "set_default_duration",
                 {"entity_id": target, "minutes": True}, blocking=True)
         assert not entry.options
@@ -343,4 +344,20 @@ async def test_close_unconfirmed_and_invalid_default(hass):
             await hass.services.async_call("valve", "close_valve", {"entity_id": target}, blocking=True)
         assert state(hass, "valve", "zone_1").state == "open"
         client.stop.assert_awaited_once()
+        assert await hass.config_entries.async_unload(entry.entry_id)
+
+
+async def test_command_preserves_poll_diagnostics(hass, freezer):
+    """Partial command reads must not report a new full snapshot fetch."""
+    client = AsyncMock()
+    client.read_state.return_value = running(None)
+    with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()), patch(
+        "custom_components.solem_woobee.coordinator.connection_scope", return_value=scope(client),
+    ):
+        entry = await setup(hass)
+        before = entry.runtime_data.data
+        freezer.tick(timedelta(seconds=30))
+        await entry.runtime_data.async_irrigate(None)
+        assert entry.runtime_data.data.last_fetched == before.last_fetched
+        assert entry.runtime_data.data.rssi == before.rssi
         assert await hass.config_entries.async_unload(entry.entry_id)

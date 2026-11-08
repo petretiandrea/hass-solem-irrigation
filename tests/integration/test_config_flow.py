@@ -79,3 +79,43 @@ async def test_no_devices(hass):
     with patch("homeassistant.components.bluetooth.async_discovered_service_info", return_value=[]):
         result = await start(hass)
     assert result["reason"] == "no_devices_found"
+
+
+@pytest.mark.parametrize("candidate", [ADDRESS, "11:22:33:44:55:66"])
+async def test_duplicate_after_address_change(hass, candidate):
+    MockConfigEntry(domain=DOMAIN, unique_id=ADDRESS, data={
+        CONF_ADDRESS: "11:22:33:44:55:66", "identity_address": ADDRESS,
+    }).add_to_hass(hass)
+    with patch("homeassistant.components.bluetooth.async_discovered_service_info", return_value=[
+        SimpleNamespace(address=candidate.upper(), name="WooBee"),
+    ]), patch("custom_components.solem_woobee.config_flow_handler.async_validate_device") as validate:
+        result = await start(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_ADDRESS: candidate})
+    assert result["reason"] == "already_configured"
+    validate.assert_not_called()
+
+
+async def test_user_collision_during_validation(hass):
+    async def validate(*args):
+        MockConfigEntry(domain=DOMAIN, unique_id="11:22:33:44:55:66", data={
+            CONF_ADDRESS: ADDRESS, "identity_address": "11:22:33:44:55:66",
+        }).add_to_hass(hass)
+        return DATA
+
+    with patch("custom_components.solem_woobee.config_flow_handler.async_validate_device", side_effect=validate):
+        result = await start(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_ADDRESS: ADDRESS})
+    assert result["reason"] == "already_configured"
+
+
+async def test_unrelated_entry_does_not_block_user(hass):
+    MockConfigEntry(domain=DOMAIN, unique_id="11:22:33:44:55:66", data={
+        CONF_ADDRESS: "11:22:33:44:55:66",
+    }).add_to_hass(hass)
+    with patch("custom_components.solem_woobee.config_flow_handler.async_validate_device", return_value=DATA), patch(
+        "custom_components.solem_woobee.async_setup_entry", return_value=True,
+    ):
+        result = await start(hass)
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {CONF_ADDRESS: ADDRESS})
+        await hass.async_block_till_done()
+    assert result["type"] == FlowResultType.CREATE_ENTRY

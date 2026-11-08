@@ -3,6 +3,7 @@ import voluptuous as vol
 
 from homeassistant.components.valve.const import ValveEntityFeature
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.service import async_register_platform_entity_service
 
 from .const import DOMAIN
@@ -13,7 +14,10 @@ MAX_MINUTES = 0xFFFFFF // 60
 def valid_minutes(value: object) -> int:
     """Require whole minutes, rejecting bools, fractions and implicit coercion."""
     if type(value) is not int or not 1 <= value <= MAX_MINUTES:
-        raise vol.Invalid(f"minutes must be an integer from 1 to {MAX_MINUTES}")
+        raise ServiceValidationError(
+            translation_domain=DOMAIN, translation_key="invalid_minutes",
+            translation_placeholders={"max_minutes": str(MAX_MINUTES)},
+        )
     return value
 
 

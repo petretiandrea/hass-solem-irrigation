@@ -14,5 +14,6 @@ jobs:
         with:
           category: integration
           comment: false
-          # Pending submission to HA brands; tracked in quality_scale.yaml.
+          # Local assets prepared; installed HA/candidate branding validation pending.
+          # See docs/dependency-provenance.md before removing this exception.
           ignore: brands

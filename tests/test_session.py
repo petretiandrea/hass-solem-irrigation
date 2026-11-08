@@ -256,3 +256,132 @@ class FailureTests(unittest.IsolatedAsyncioTestCase):
         connection = WooBeeConnection('AA:BB:CC:DD:EE:FF', BLE)
         with self.assertRaises(RuntimeError):
             await connection.__aexit__(None, None, None)
+
+class AdditionalFailureTests(unittest.IsolatedAsyncioTestCase):
+    async def test_auth_idempotence_and_unknown_ack(self):
+        ble = BLE()
+        session = SolemSession(ble, WOOBEE_V2_GATT)
+        session._on_auth(None, bytearray(b'AUTHENTICATED\x00'))
+        await session.authenticate()
+        session._on_auth(None, bytearray(b'unknown'))
+        session._on_auth(None, bytearray(b'AUTHENTICATED\x00'))
+        subscriptions = dict(ble.callbacks)
+        await session.authenticate()
+        self.assertEqual(subscriptions, ble.callbacks)
+        await session.aclose()
+
+    async def test_cancel_auth_cleans_pending_future_and_owned_connection(self):
+        ble = BLE()
+        ble.ack = False
+        session = SolemSession(ble, WOOBEE_V2_GATT, owns_connection=True)
+        task = asyncio.create_task(session.__aenter__())
+        while not ble.callbacks:
+            await asyncio.sleep(0)
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+        self.assertTrue(session._authenticated.cancelled())
+        self.assertIsNone(session._nonce)
+        self.assertFalse(ble.callbacks)
+        self.assertEqual(1, ble.disconnections)
+
+    async def test_transport_failures_do_not_retry_and_preserve_cause(self):
+        for phase in ('read', 'write'):
+            ble = BLE()
+            session = SolemSession(ble, WOOBEE_V2_GATT)
+            async def fail(*args, **kwargs):
+                raise OSError('transport failure')
+            if phase == 'read':
+                ble.read_gatt_char = fail
+                operation = session.authenticate()
+            else:
+                await session.authenticate()
+                ble.write_gatt_char = fail
+                operation = session.exchange(b'\x3b\x00')
+            with self.assertRaises(ConnectivityError) as caught:
+                await operation
+            self.assertIsInstance(caught.exception.__cause__, OSError)
+            self.assertFalse(ble.callbacks)
+            self.assertIsNone(session._nonce)
+
+    async def test_empty_overflow_wrong_later_page_and_page_limit(self):
+        for mode in ('empty', 'overflow', 'wrong_page', 'limit'):
+            with self.subTest(mode=mode):
+                ble = BLE()
+                session = SolemSession(ble, WOOBEE_V2_GATT)
+                await session.authenticate()
+                callback = ble.callbacks[WOOBEE_V2_GATT.response_uuid]
+                async def respond(*args, **kwargs):
+                    if mode == 'empty':
+                        callback(None, bytearray())
+                        return
+                    count = 129 if mode == 'overflow' else 128 if mode == 'limit' else 2
+                    for index in range(count):
+                        frame = b'\xff\x00' if mode == 'wrong_page' and index else b'\x3c\x00\x01'
+                        callback(None, bytearray(ctr_crypt(frame, WOOBEE_V2_GATT.key, NONCE)))
+                ble.write_gatt_char = respond
+                with self.assertRaises(InvalidResponseError):
+                    await session.exchange_all(b'\x3b\x00')
+                self.assertFalse(ble.callbacks)
+                self.assertTrue(session._notifications.empty())
+
+    async def test_cleanup_failure_preserves_primary_error(self):
+        for primary in (None, ValueError('primary')):
+            ble = BLE()
+            session = SolemSession(ble, WOOBEE_V2_GATT, owns_connection=True)
+            await session.__aenter__()
+            async def fail():
+                raise OSError('disconnect failure')
+            ble.disconnect = fail
+            if primary is None:
+                with self.assertRaises(ConnectivityError):
+                    await session.__aexit__(None, None, None)
+            else:
+                await session.__aexit__(ValueError, primary, None)
+            self.assertFalse(ble.callbacks)
+            self.assertIsNone(session._nonce)
+
+    def test_reply_completion_sentinels(self):
+        for frame, last in ((b'\x3c\x00\xf0\x00', True),
+                            (b'\x3c\xfe', True), (b'\x3c', True),
+                            (b'\x3c\x00\x01\xf0', True),
+                            (b'\x3c\x00\x01\xf0\xf0', True),
+                            (b'\x3c\x00\x01\xf0\x00', False)):
+            self.assertEqual(last, SolemSession._is_last_new_generation_reply(frame))
+
+    async def test_connect_timeout_is_typed_even_when_disconnect_fails(self):
+        ble = BLE()
+        async def timeout():
+            raise TimeoutError('connect timed out')
+        async def fail():
+            raise OSError('disconnect failed')
+        ble.connect = timeout
+        ble.disconnect = fail
+        session = SolemSession(ble, WOOBEE_V2_GATT, owns_connection=True)
+        with self.assertRaises(SessionTimeoutError) as caught:
+            await session.__aenter__()
+        self.assertIsInstance(caught.exception.__cause__, TimeoutError)
+        self.assertIsNone(session._nonce)
+
+    async def test_cleanup_failure_does_not_mask_auth_or_exchange_failure(self):
+        for authenticate in (True, False):
+            ble = BLE()
+            session = SolemSession(ble, WOOBEE_V2_GATT)
+            async def fail(*args, **kwargs):
+                raise OSError('unsubscribe failed')
+            if authenticate:
+                ble.challenge = b'bad'
+                ble.stop_notify = fail
+                operation = session.authenticate()
+            else:
+                await session.authenticate()
+                ble.stop_notify = fail
+                async def wrong(*args, **kwargs):
+                    session._on_response(None, bytearray())
+                ble.write_gatt_char = wrong
+                operation = session.exchange(b'\x3b\x00')
+            with self.assertRaises(InvalidResponseError):
+                await operation
+            self.assertTrue(session._closed)
+            self.assertFalse(session._subscriptions)
+            self.assertIsNone(session._nonce)

@@ -48,7 +48,7 @@ class WooBeeControllerBinarySensor(WooBeeEntity, BinarySensorEntity):
     def __init__(self, coordinator: WooBeeCoordinator, description: BinarySensorEntityDescription) -> None:
         super().__init__(coordinator)
         self.entity_description = description
-        self._attr_unique_id = f"{ControllerIdentity(coordinator.address).unique_id}_{description.key}"
+        self._attr_unique_id = f"{ControllerIdentity(coordinator.identity_address).unique_id}_{description.key}"
 
     @property
     def available(self) -> bool:
@@ -72,7 +72,7 @@ class WooBeeZoneBinarySensor(WooBeeZoneEntity, BinarySensorEntity):
                  description: BinarySensorEntityDescription) -> None:
         super().__init__(coordinator, zone)
         self.entity_description = description
-        self._attr_unique_id = f"{ControllerIdentity(coordinator.address).zones[zone - 1].unique_id}_{description.key}"
+        self._attr_unique_id = f"{ControllerIdentity(coordinator.identity_address).zones[zone - 1].unique_id}_{description.key}"
         self._attr_translation_placeholders = {"zone": str(zone)}
 
     @property
