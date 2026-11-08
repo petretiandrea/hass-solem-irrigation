@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -29,3 +29,9 @@ target-version = "py314"
 [tool.ruff.lint]
 # Fatal syntax/control-flow errors and undefined names; formatting is not gated.
 select = ["E9", "F63", "F7", "F82"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+files = ["custom_components/solem_woobee"]
+explicit_package_bases = true

@@ -18,7 +18,7 @@ def normalize_address(address: str) -> str:
 class ControllerIdentity:
     address: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         object.__setattr__(self, "address", normalize_address(self.address))
 
     @property
@@ -35,7 +35,7 @@ class ZoneIdentity:
     controller: ControllerIdentity
     number: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if type(self.number) is not int or not 1 <= self.number <= 4:
             raise ValueError("zone must be an integer from 1 to 4")
 

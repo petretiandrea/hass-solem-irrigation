@@ -3,22 +3,22 @@
 Use an explicit allowlist: never serialize config entries, identities, exceptions,
 raw BLE frames or transport/session objects (including fixed protocol keys).
 """
-from typing import Any
-
 from homeassistant.core import HomeAssistant
 
 from .data import WooBeeConfigEntry
 
+type JSONValueType = None | bool | int | float | str | list[JSONValueType] | dict[str, JSONValueType]
+
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: WooBeeConfigEntry,
-) -> dict[str, Any]:
+) -> dict[str, JSONValueType]:
     """Return cached operational data without opening a BLE connection."""
     coordinator = entry.runtime_data
     data = coordinator.data
-    result: dict[str, Any] = {
+    result: dict[str, JSONValueType] = {
         "last_update_success": coordinator.last_update_success,
-        "poll_interval_seconds": coordinator.update_interval.total_seconds(),
+        "poll_interval_seconds": coordinator.update_interval.total_seconds() if coordinator.update_interval else None,
         "snapshot": None,
     }
     if data is None:

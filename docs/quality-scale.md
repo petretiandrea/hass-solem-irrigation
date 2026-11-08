@@ -34,8 +34,9 @@ Command errors are covered by SBR-94 simulations. Read platforms
 explicitly declare parallel update behavior. Fixed-key BLE has no user credentials or reauthentication flow; that
 exemption is documented rather than inventing a cloud login.
 
-Gold/Platinum work (verified discovery, exception translations,
-strict typing and lifecycle configuration flows) remains visible in the checklist.
+Remaining Gold work (verified discovery and discovery update information)
+remains visible in the checklist. SBR-103 implements the
+custom-repository strict typing gate; Core registration remains an upstreaming step.
 Five-minute polling is a documented conservative choice, not a measured battery
 or BLE limit. Hardware tests are still needed for battery impact and freshness.
 
@@ -273,6 +274,78 @@ Repository description/topics still require administration permission (prior API
 attempts returned HTTP 403). Dependency/protocol provenance and the remaining
 Quality Scale TODOs remain open; no tier is claimed. No release is published.
 
+
+## SBR-103 strict typing (custom repository)
+
+Reviewed the [strict-typing rule](https://contributors.home-assistant.io/core/quality-scale/strict-typing/)
+on 2026-11-07 against main `f1902d3`. This independent change implements the
+custom repository's typing gate; it does not assert a cumulative or official tier.
+All other checklist TODOs remain open.
+
+`pyproject.toml` enables mypy strict mode on Python 3.14 for the entire
+`custom_components/solem_woobee` directory: 22 modules, including all eight
+embedded-client modules. No excluded modules, blanket ignores, missing-import
+suppression, explicit `Any`, or unchecked decorator casts are used. The pinned
+`requirements_typing.txt` selects mypy 1.19.1, HA 2026.8.0 (the minimum supported
+HA API), Bleak/cryptography with their inline types, and requests/PyYAML stubs.
+This typing environment is separate from the preserved HA regression matrix
+(2026.8.0/plugin 0.13.354 and 2026.10.4/plugin 0.13.375).
+
+Entry setup/unload, coordinator, platforms and diagnostics use
+`WooBeeConfigEntry = ConfigEntry[WooBeeCoordinator]`; the user flow returns
+`ConfigFlowResult`. Persisted address/options and backup JSON are checked before
+entering typed domain APIs. Dynamic binary-sensor attribute access is replaced
+by explicit boolean fields. BLE inspection and session factory protocols, async
+context managers, transaction ownership and the serialization decorator preserve
+concrete argument/return types. Existing BLE 0.x/2.x inspection compatibility,
+unknown values and command safety boundaries remain covered by simulated tests.
+
+The distributed `woobee_api` package now contains `py.typed`. CI's new `typing`
+job runs strict mypy, builds wheel and sdist using pinned tooling, and runs
+`scripts/check_typed_distribution.py` to inspect both artifacts for the marker
+and every client module. HACS still installs the embedded source tree; no PyPI
+publication or release is introduced.
+
+Reproduce locally with Python 3.14:
+
+```bash
+python -m pip install -e . -r requirements_typing.txt
+python -m mypy
+python -m build --no-isolation
+python scripts/check_typed_distribution.py
+```
+
+For a future **Home Assistant Core contribution**, separately add
+`homeassistant.components.solem_woobee.*` alphabetically to Core's `.strict-typing`
+file, regenerate Core's mypy configuration with
+`python -m script.hassfest -p mypy_config`, and run Core's checks. Creating a
+similarly named file here would not register this custom integration in Core.
+The checklist's `done` records this repository's implementation only.
+
+Reconfirmed `async-dependency`: `BLETransport`, `SolemSession` and
+`WooBeeConnection` await BLE connect/authentication/notification/read/write and
+cleanup operations; timeouts bound I/O and `tests/test_session.py` exercises
+ownership, cancellation, serialization and no automatic replay. Reconfirmed
+`inject-websession` exemption: the HA adapter supplies an address-bound
+`BleakClient` using HA Bluetooth discovery; there is no HTTP dependency or
+websession to inject. These findings do not establish physical-device behavior.
+
+SBR-103 local validation: Python 3.14.10; strict mypy reports no issues in all
+22 modules. Both HA targets pass 105 integration tests; every one of the 14
+adapter modules has 100% line/branch coverage and passes the existing >95%
+per-module gate. HA 2026.8.0 retains the 54 pre-existing mocked-Bluetooth socket
+warnings. All 37 standalone client tests pass, including malformed backup and
+session-boundary tests. Ruff 0.14.3, compileall, source distribution checks,
+wheel/sdist marker/module verification and git diff --check pass. The whole-client
+coverage gap remains explicitly outside this issue; the integration-only overall
+coverage measurement is not a whole-integration coverage claim. No hardware,
+fresh-install, HACS-download or official tier validation is asserted.
+
+Initial SBR-103 publication reported a GitHub API credential lookup limitation.
+This was resolved by requesting credentials for the specific repository path;
+[PR #13](https://github.com/petretiandrea/hass-solem-irrigation/pull/13) was created
+and linked to Linear SBR-103. Remote CI status must still be checked separately.
+
 ## SBR-99 combined shipped-module coverage
 
 Revalidated on 2026-11-08 using Python 3.14.10 after merging current main
@@ -504,3 +577,25 @@ modules have 100% line/branch coverage and pass the >95% per-module gate.
 All 34 client tests, Ruff, distribution checks, compileall and git diff --check
 pass. HA 2026.8.0 emits 78 mocked-Bluetooth pytest-socket warnings. No hardware
 validation was performed; these results do not establish whole-client coverage.
+
+
+### SBR-103 merge validation (2026-11-08)
+
+Merged current main `953b261` into PR #13, retaining the SBR-99 combined coverage
+gate, SBR-100 evidence, SBR-101 identity-preserving reconfiguration, SBR-102
+translated failures and SBR-106 RSSI/freshness sensors. Reconfiguration now uses
+`ConfigFlowResult` and a typed `WooBeeConfigEntry`; invalid address/identity
+mapping values are rejected. All zone sensor IDs use the frozen identity address
+rather than the changing transport address. Both standalone session test groups
+and all quality evidence sections are retained.
+
+Python 3.14.10: strict mypy passes all 22 shipped modules against the pinned
+HA 2026.8.0 typing environment. Both existing regression matrix targets pass
+58 standalone tests and 134 integration tests. The combined coverage measurement
+has 100% lines and branches in every shipped module and passes the unchanged
+SBR-99 gate, including 100% config-flow coverage. HA 2026.8.0 retains 78
+mocked-Bluetooth socket warnings. Ruff, compileall, source distribution checks,
+wheel/sdist typed-marker/module verification and git diff --check pass.
+These combined results supersede the earlier SBR-103 counts and coverage-gap
+statement; SBR-99's gate is retained. No hardware commands, release or official
+tier claim. Remaining checklist TODOs and physical-evidence limits still apply.

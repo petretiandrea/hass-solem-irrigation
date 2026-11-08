@@ -2,7 +2,6 @@
 
 from .client import GattCharacteristic, GattService, WooBeeClient, WooBeeProfile
 from .protocol import (
-    AuthenticationError,
     SOLEM_STANDARD_KEY,
     WOOBEE_V2_GATT,
     SolemGatt,
@@ -24,7 +23,7 @@ from .programs import (
 )
 
 from .client import WooBeeConnection
-from .errors import WooBeeError, ConnectivityError, SessionTimeoutError, InvalidResponseError
+from .errors import AuthenticationError, WooBeeError, ConnectivityError, SessionTimeoutError, InvalidResponseError
 from .models import ControllerIdentity, ZoneIdentity, normalize_address
 
 __all__ = [

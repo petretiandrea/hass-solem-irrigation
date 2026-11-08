@@ -191,12 +191,18 @@ rules:
     comment: One fixed WB-4 device per entry; zones are entities, not removable child devices. Official single-device exemption applies. test_fixed_controller_entry_removal verifies online/offline entry removal cleans registry and polling.
   async-dependency:
     status: done
-    comment: Embedded client uses asynchronous BLE transport, bounded operations and session cleanup;
-      client unit tests cover ownership and cancellation.
+    comment: Reconfirmed in SBR-103; BLETransport and SolemSession await BLE I/O with bounded
+      operations, serialized transactions and cleanup. tests/test_session.py covers ownership,
+      cancellation and no replay.
   inject-websession:
     status: exempt
-    comment: Local BLE integration; no HTTP client or web session.
+    comment: Reconfirmed in SBR-103; connection.py injects an HA-resolved BleakClient into
+      WooBeeConnection. The embedded client uses BLE only, with no HTTP client or web session.
   strict-typing:
-    status: todo
-    comment: Complete strict type checking for wrapper and embedded client; no strict typing gate currently
-      runs.
+    status: done
+    comment: Custom-repository evidence in docs/quality-scale.md (SBR-103); pinned strict mypy
+      checks all 22 adapter/client modules on Python 3.14 in CI. Merge validation against main
+      953b261 retains the combined all-module coverage gate and types the reconfiguration flow.
+      Typed config entries, validated
+      mapping boundaries, and wheel/sdist py.typed checks are included. Core upstreaming still
+      requires registration in Core .strict-typing and generated mypy configuration; no tier claimed.

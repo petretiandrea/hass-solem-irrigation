@@ -7,10 +7,13 @@ Every command frame below is recovered statically from the APK's
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncIterator, Callable, Coroutine
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from functools import wraps
+from typing import Concatenate
+from types import TracebackType
 from uuid import UUID
 
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -101,14 +104,14 @@ class SolemSession:
         self._authenticated: asyncio.Future[None] | None = None
         self._nonce: bytes | None = None
         self._lock = asyncio.Lock()
-        self._owner = None
+        self._owner: asyncio.Task[object] | None = None
         self._subscriptions: list[str] = []
         self._broken = False
         self._closed = False
         self._overflow = False
 
     @asynccontextmanager
-    async def transaction(self):
+    async def transaction(self) -> AsyncIterator[None]:
         """Serialize a complete operation, including all of its requests."""
         task = asyncio.current_task()
         if self._owner is task:
@@ -121,7 +124,7 @@ class SolemSession:
             finally:
                 self._owner = None
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> SolemSession:
         try:
             if self._owns_connection:
                 async with asyncio.timeout(10):
@@ -139,7 +142,10 @@ class SolemSession:
                 raise
             raise ConnectivityError("BLE connection failed") from exc
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(
+        self, exc_type: type[BaseException] | None, exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
         try:
             await self.aclose()
         except ConnectivityError:
@@ -225,9 +231,11 @@ class SolemSession:
         encrypted = await self._notifications.get()
         if self._overflow or not encrypted:
             raise InvalidResponseError("empty response or notification overflow")
+        if self._nonce is None:
+            raise AuthenticationError("authenticate before receiving frames")
         return ctr_crypt(encrypted, self._gatt.key, self._nonce)
 
-    async def _exchange(self, frame: bytes, timeout: float, all_replies: bool):
+    async def _exchange(self, frame: bytes, timeout: float, all_replies: bool) -> list[bytes]:
         async with self.transaction():
             if self._closed or self._broken:
                 raise ConnectivityError("create a new session on a fresh connection")
@@ -297,9 +305,11 @@ WOOBEE_V2_GATT = SolemGatt(
 )
 
 
-def serialized(method):
+def serialized[**P, R](
+    method: Callable[Concatenate[WooBeeV2, P], Coroutine[object, object, R]],
+) -> Callable[Concatenate[WooBeeV2, P], Coroutine[object, object, R]]:
     @wraps(method)
-    async def wrapped(self, *args, **kwargs):
+    async def wrapped(self: WooBeeV2, /, *args: P.args, **kwargs: P.kwargs) -> R:
         if isinstance(self._session, SolemSession):
             async with self._session.transaction():
                 return await method(self, *args, **kwargs)

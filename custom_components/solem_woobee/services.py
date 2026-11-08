@@ -1,7 +1,7 @@
 """Manual irrigation action registration and strict duration schema."""
 import voluptuous as vol
 
-from homeassistant.components.valve import ValveEntityFeature
+from homeassistant.components.valve.const import ValveEntityFeature
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.service import async_register_platform_entity_service

@@ -53,7 +53,7 @@ class WooBeeRemainingSensor(WooBeeZoneEntity, SensorEntity):
 
     def __init__(self, coordinator: WooBeeCoordinator, zone: int) -> None:
         super().__init__(coordinator, zone)
-        self._attr_unique_id += "_remaining_time"
+        self._attr_unique_id = f"{ControllerIdentity(coordinator.identity_address).zones[zone - 1].unique_id}_remaining_time"
         self._attr_translation_placeholders = {"zone": str(zone)}
 
     @property

@@ -188,7 +188,10 @@ class Schedule:
             name=program.name,
             days=Days(program.weekdays_mask),
             starts=tuple(TimeOfDay(value // 60, value % 60) for value in program.start_minutes if value is not None),
-            zones=ZoneDurations.from_seconds(program.zone_durations_seconds),
+            zones=ZoneDurations.from_seconds((
+                program.zone_durations_seconds[0], program.zone_durations_seconds[1],
+                program.zone_durations_seconds[2], program.zone_durations_seconds[3],
+            )),
             cycle=program.cycle,
             water_budget=program.water_budget,
             zone_pause_seconds=program.time_between_zones,
@@ -233,32 +236,54 @@ class ControllerBackup:
 
     @classmethod
     def from_json(cls, value: str) -> "ControllerBackup":
-        payload = json.loads(value)
-        if not isinstance(payload, dict) or payload.get("format") != "solem-woobee-backup/v1":
+        payload = _mapping(json.loads(value))
+        if payload.get("format") != "solem-woobee-backup/v1":
             raise ValueError("not a solem-woobee backup v1")
-        schedules = payload.get("schedules")
-        if not isinstance(schedules, list):
-            raise ValueError("backup schedules must be a list")
+        schedules = _sequence(payload.get("schedules"))
         try:
-            return cls(
-                tuple(
-                    Schedule(
-                        number=item["number"],
-                        name=item.get("name", ""),
-                        days=Days(item.get("days", int(Days.EVERY_DAY))),
-                        starts=tuple(TimeOfDay(**time) for time in item.get("starts", [])),
-                        zones=ZoneDurations.from_seconds(tuple(item.get("zone_seconds", (0, 0, 0, 0)))),
-                        cycle=ProgramCycle(item.get("cycle", int(ProgramCycle.CUSTOM))),
-                        water_budget=item.get("water_budget", 100),
-                        zone_pause_seconds=item.get("zone_pause_seconds", 0),
-                        period_length=item.get("period_length", 2),
-                        synchronization_day=item.get("synchronization_day", 0),
-                    )
-                    for item in schedules
-                )
-            )
+            return cls(tuple(_schedule(item) for item in schedules))
         except (KeyError, TypeError, ValueError) as exc:
             raise ValueError("invalid solem-woobee backup") from exc
+
+
+def _mapping(value: object) -> dict[str, object]:
+    if not isinstance(value, dict) or any(not isinstance(key, str) for key in value):
+        raise ValueError("expected an object with string keys")
+    return {str(key): item for key, item in value.items()}
+
+
+def _sequence(value: object) -> list[object]:
+    if not isinstance(value, (list, tuple)):
+        raise ValueError("expected a sequence")
+    return list(value)
+
+
+def _integer(value: object) -> int:
+    if type(value) is not int:
+        raise ValueError("expected an integer")
+    return value
+
+
+def _schedule(value: object) -> Schedule:
+    item = _mapping(value)
+    name = item.get("name", "")
+    if not isinstance(name, str):
+        raise ValueError("expected a schedule name")
+    starts = [_mapping(time) for time in _sequence(item.get("starts", []))]
+    seconds = [_integer(second) for second in _sequence(item.get("zone_seconds", (0, 0, 0, 0)))]
+    if len(seconds) != 4:
+        raise ValueError("expected four zone durations")
+    return Schedule(
+        number=_integer(item["number"]), name=name,
+        days=Days(_integer(item.get("days", int(Days.EVERY_DAY)))),
+        starts=tuple(TimeOfDay(_integer(time["hour"]), _integer(time.get("minute", 0))) for time in starts),
+        zones=ZoneDurations.from_seconds((seconds[0], seconds[1], seconds[2], seconds[3])),
+        cycle=ProgramCycle(_integer(item.get("cycle", int(ProgramCycle.CUSTOM)))),
+        water_budget=_integer(item.get("water_budget", 100)),
+        zone_pause_seconds=_integer(item.get("zone_pause_seconds", 0)),
+        period_length=_integer(item.get("period_length", 2)),
+        synchronization_day=_integer(item.get("synchronization_day", 0)),
+    )
 
 
 def build_program_frames(program: IrrigationProgram, today: date | None = None) -> list[bytes]:

@@ -245,6 +245,17 @@ class FailureTests(unittest.IsolatedAsyncioTestCase):
         await session.aclose()
         self.assertEqual(1, ble.disconnections)
 
+    async def test_receive_requires_authentication(self):
+        session = SolemSession(BLE(), WOOBEE_V2_GATT)
+        session._on_response(None, bytearray(b"response"))
+        with self.assertRaises(AuthenticationError):
+            await session._receive()
+        await session.aclose()
+
+    async def test_exit_requires_an_entered_connection(self):
+        connection = WooBeeConnection('AA:BB:CC:DD:EE:FF', BLE)
+        with self.assertRaises(RuntimeError):
+            await connection.__aexit__(None, None, None)
 
 class AdditionalFailureTests(unittest.IsolatedAsyncioTestCase):
     async def test_auth_idempotence_and_unknown_ack(self):

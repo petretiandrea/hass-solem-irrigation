@@ -4,17 +4,16 @@ WooBee uses a fixed protocol key, not user credentials. Authentication is
 repeated for each connection; there is no credential reauthentication flow.
 Automatic discovery awaits a verified advertisement matcher.
 """
-from typing import Any
-
 import voluptuous as vol
 from homeassistant import config_entries, data_entry_flow
 from homeassistant.components import bluetooth
 from homeassistant.const import CONF_ADDRESS
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.helpers import device_registry as dr
 
 from ..connection import async_validate_device
 from ..const import DOMAIN
+from ..data import WooBeeConfigEntry
 from ..woobee_api import AuthenticationError, ConnectivityError, InvalidResponseError, normalize_address
 
 
@@ -23,7 +22,7 @@ class WooBeeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_user(self, user_input: dict[str, object] | None = None) -> ConfigFlowResult:
         errors = {}
         devices = {
             normalize_address(info.address): f"{info.name or 'Bluetooth'} ({info.address})"
@@ -31,7 +30,10 @@ class WooBeeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         }
         if user_input is not None:
             try:
-                address = normalize_address(user_input[CONF_ADDRESS])
+                raw_address = user_input[CONF_ADDRESS]
+                if not isinstance(raw_address, str):
+                    raise InvalidResponseError("controller address must be a string")
+                address = normalize_address(raw_address)
                 self._abort_if_address_configured(address)
                 await self.async_set_unique_id(address)
                 self._abort_if_unique_id_configured()
@@ -57,14 +59,17 @@ class WooBeeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_reconfigure(
-        self, user_input: dict[str, Any] | None = None,
-    ) -> FlowResult:
+        self, user_input: dict[str, object] | None = None,
+    ) -> ConfigFlowResult:
         """Change transport address while retaining the legacy registry identity."""
-        entry = self._get_reconfigure_entry()
+        entry: WooBeeConfigEntry = self._get_reconfigure_entry()
         errors = {}
         if user_input is not None:
             try:
-                address = normalize_address(user_input[CONF_ADDRESS])
+                raw_address = user_input[CONF_ADDRESS]
+                if not isinstance(raw_address, str):
+                    raise ValueError("controller address must be a string")
+                address = normalize_address(raw_address)
             except ValueError:
                 errors["base"] = "invalid_address"
             else:
