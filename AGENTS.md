@@ -1,9 +1,9 @@
-# WooBee V2 agent handoff
+# Repository guide
 
 ## Scope
 
 Python BLE client for SOLEM WooBee V2 / WB-4 firmware 7.0.2. Protocol facts
-come from static reverse engineering of MySOLEM 6.13.3; see `README.md` for
+come from static reverse engineering of MySOLEM 6.13.3; see `docs/client.md` for
 frames and `docs/research/` for integration research.
 
 ## Safety boundary
@@ -67,3 +67,13 @@ integration tests and the per-module coverage gate described in
 Run hardware commands manually after tests. BLE timeouts can invalidate macOS
 service discovery; menu reconnects and authenticates again after `TimeoutError`
 or `BleakError`.
+
+## Documentation and private data
+
+Keep documentation about current behavior. Put API/protocol details in
+`docs/client.md`, acceptance criteria in the quality checklist and release
+steps in `docs/releasing.md`. Keep PR progress reports in issues and PRs.
+Use synthetic identifiers in examples. Do not commit raw BLE captures, device
+addresses/serials, authentication challenges, local paths or controller backups.
+`docs/examples/woobee-gatt.json` is redacted; service/characteristic UUIDs are
+protocol constants and must remain accurate.

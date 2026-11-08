@@ -1,5 +1,5 @@
 {
-  "address": "EF892F67-45E5-D6DB-633D-6DF1C5AFA7B5",
+  "address": "00000000-0000-0000-0000-000000000001",
   "name": null,
   "rssi": null,
   "services": [
@@ -30,7 +30,7 @@
             "notify",
             "write"
           ],
-          "value_hex": "dd6664dbbe93e92fe8d142a100000000",
+          "value_hex": null,
           "read_error": null
         }
       ]
@@ -73,7 +73,7 @@
           "properties": [
             "read"
           ],
-          "value_hex": "42343034303144373630343030303031",
+          "value_hex": null,
           "read_error": null
         },
         {

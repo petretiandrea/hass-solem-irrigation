@@ -1,339 +1,72 @@
 # SOLEM WooBee for Home Assistant
 
-Custom integration for local Bluetooth monitoring and timed manual irrigation.
-The verified protocol/device reference is **WooBee V2 / WB-4, type 180, firmware
-7.0.2**, recovered from MySOLEM 6.13.3. Other models/firmware are not verified.
-Automated tests simulate BLE; clean-install and supervised hardware acceptance
-remain pending before the first release. No official Quality Scale tier is claimed.
+Local Bluetooth integration for the SOLEM WooBee V2 / WB-4 irrigation controller.
+It provides four timed zone valves, a global stop button and status sensors.
+The protocol reference is WB-4, type 180, firmware 7.0.2, recovered from MySOLEM
+6.13.3. Other models and firmware have not been verified.
+
+## Requirements
+
+- Home Assistant 2026.8.0 or later (Python 3.14+).
+- A connectable Bluetooth adapter or active Bluetooth proxy within range.
+- HACS 2.0.5 or later if installing through HACS.
+
+Controller operations use local BLE and require no account or Internet access.
+Downloads and updates require Internet access. Bluetooth proxy compatibility,
+battery impact and the full HA hardware procedure still need validation.
 
 ## Install and configure
 
-Requires **Home Assistant 2026.8.0+**, its Python **3.14+** environment and a
-connectable Bluetooth adapter or proxy reachable by HA. No MySOLEM account,
-password, cloud subscription or Internet connection is used for controller
-operations. Internet is needed to download HA/HACS dependencies and updates.
-The connection path is HA → local Bluetooth adapter/proxy → controller; proxy
-compatibility and battery impact still require hardware validation.
+In HACS, add `https://github.com/petretiandrea/hass-solem-irrigation` under
+**Custom repositories**, category **Integration**. Download **SOLEM WooBee** and
+restart Home Assistant. This repository is not in the default HACS catalog.
 
-**HACS (after the first authorized release):** in HACS, open Custom repositories,
-add `https://github.com/petretiandrea/hass-solem-irrigation` as **Integration**,
-download SOLEM WooBee and restart HA. HACS 2.0.5+ is required. This project is not
-claimed to be in the default HACS catalog; no release is published by this task.
-
-**Manual / unreleased candidate:** copy the entire
-`custom_components/solem_woobee/` directory (including `woobee_api/`) from a
-reviewed checkout into `<config>/custom_components/solem_woobee/`, then restart.
-Do not install the local client wheel into HA or copy only the adapter files.
+For a manual install, copy the complete `custom_components/solem_woobee/`
+directory, including `woobee_api/`, into `<config>/custom_components/` and restart.
+Use a reviewed checkout when testing an unreleased change.
 
 Open **Settings → Devices & services → Add integration → SOLEM WooBee** and
-select the controller visible to HA Bluetooth. Setup reads identity and state;
-there is no YAML setup or cloud login. See [configuration](#home-assistant-configuration),
-[entities](#read-only-entities), [manual commands](#manual-irrigation-commands),
-[automation examples](docs/manual-irrigation.md),
-[troubleshooting](#examples-and-troubleshooting) and
-[release / clean-install checklist](docs/releasing.md).
+select the controller. Setup authenticates and reads identity and state. There
+is no YAML configuration or password. Automatic discovery is not implemented;
+unrelated Bluetooth devices may appear in the selector and fail validation.
 
-HA exposes state, four zone valves, duration actions and a global stop button.
-Programs are excluded from HA: no reading, editing, execution or backup/restore.
-Reported valve state is not a measurement of water flow. The unofficial reverse
-engineered protocol may change with firmware; there is no vendor compatibility
-guarantee. A timed-out command may have executed: inspect state before retrying.
+## Entities and updates
 
-## Standalone client and protocol reference
+All zones belong to one controller device. Entity names are available in English
+and Italian. Select entities through HA’s entity picker; IDs depend on your
+controller name and language.
 
-The following sections describe development tools and protocol APIs; their
-program/backup operations are outside the Home Assistant integration scope.
+| Entity | Meaning |
+| --- | --- |
+| Zone 1–4 valves | Open with a timed duration; close the active zone |
+| Stop all irrigation | Stop the controller, including externally started runs |
+| Zone 1–4 remaining time | Reported seconds; a missing page is unknown, zero is zero |
+| Zone 1–4 irrigating | Controller reports this zone active |
+| Zone 1–4 valve fault | Reported fault bitmap; diagnostic problem sensor |
+| Irrigation enabled / manual irrigation | Reported controller flags |
+| Sensor input open | Raw input flag; does not identify rain or soil moisture |
+| Clock alarm | Reported clock fault |
+| Last read successful | Result of the latest shared read |
+| Signal strength | Cached Bluetooth advertisement RSSI in dBm |
+| Last fetched | UTC time of the last successful full poll |
+| Battery raw value | Unscaled byte; diagnostic, disabled by default |
 
-Home Assistant shared polling, availability and device registry design:
-[coordinator documentation](docs/coordinator.md).
+Entities share a five-minute poll while subscribed. Countdowns do not decrease
+between reads. A failed read makes state entities unavailable; **Last read
+successful** stays available and turns off, and **Last fetched** keeps its prior
+time. Missing optional durations remain unknown on available entities. RSSI may
+predate the poll or be unknown if HA has no cached advertisement. Commands do
+not advance Last fetched.
 
-```bash
-python -m pip install -e .
-python scripts/inspect_woobee.py
-```
+## Irrigation
 
-```python
-import asyncio
-from woobee_api import WooBeeClient
+Opening a zone uses its saved default duration, initially one minute.
+`solem_woobee.set_default_duration` saves a per-zone default in HA;
+`solem_woobee.start_irrigation` supplies a duration for one run. Both target a
+valve and require whole `minutes` from 1 to 279620. The maximum is a wire limit,
+not a recommended watering duration.
 
-async def main():
-    client = WooBeeClient.local()
-    devices = await client.discover()
-    for device in devices:
-        print(device)
-    print(await client.inspect("AA:BB:CC:DD:EE:FF"))
-
-asyncio.run(main())
-```
-
-`inspect()` only connects and reads characteristics. It never writes, starts a valve, changes schedules or triggers DFU.
-
-## Recovered MySOLEM transport
-
-MySOLEM 6.13.3 uses request UUID `…0002`, notification UUID `…0003` and auth
-UUID `…0005` in one UUID family. Authentication reads a challenge, writes its
-AES-ECB encryption, then waits for exact `AUTHENTICATED\0`. Request
-and response payloads use AES-CTR with that challenge as nonce.
-
-```python
-from bleak import BleakClient
-from woobee_api import SolemSession, WOOBEE_V2_GATT
-
-async with BleakClient("AA:BB:CC:DD:EE:FF") as client:
-    async with SolemSession(client, WOOBEE_V2_GATT) as session:
-        # MySOLEM command frames: use WooBeeV2(session), below.
-        pass
-```
-
-Static APK reverse engineering maps WooBee V2 firmware 7.0.2 to `type 180`,
-`BluetoothV6FrameManager` and these frames:
-
-| Action | MySOLEM builder | Plaintext frame |
-| --- | --- | --- |
-| state | `statusV5()` | `3b 00` |
-| device info | `identificationV5()` | `0f 00`, then `e3 00` UUID |
-| valve faults | `readValveStatusV5()` | `19 03 00 10 ff` |
-| input alerts | `readInputsAlerts()` | `71 00` |
-| start zone `z`, `m` minutes | `ManualValve` → `testValvesV5(z, m * 60)` | `31 05 12 z ss ss ss` |
-| stop | `ManualStop` → `manualStopV5()` | `31 05 15 00 ff 00 00` |
-| start all, `m` minutes | `TestAllValves` → `manualRunValvesV5(m * 60)` | `31 05 11 00 ss ss ss` |
-| start program `p` | `ManualProgram` → `manualRunProgramV5(p)` | `31 05 14 00 p 00 00` |
-| sync clock | `setTimeV5()` | `03 06 00 yy mm dd hh mm ss` |
-| reset valve faults | `resetValveStatusV5()` | `19 03 01 7f ff` |
-
-`ss ss ss` is big-endian seconds. Commands are AES-CTR encrypted by
-`SolemSession`; replies are parsed from MySOLEM Java into `WooBeeState`:
-active zone, seconds remaining, manual/configured origin, raw battery value and
-valve fault zones. `read_state_raw()` retains decrypted frames.
-
-Run:
-
-```bash
-.venv/bin/python scripts/woobee.py 00000000-0000-0000-0000-000000000001 status
-.venv/bin/python scripts/woobee.py 00000000-0000-0000-0000-000000000001 start 1 1
-.venv/bin/python scripts/woobee.py 00000000-0000-0000-0000-000000000001 stop
-```
-
-Menu interattivo:
-
-```bash
-.venv/bin/python scripts/woobee_menu.py 00000000-0000-0000-0000-000000000001
-```
-
-Menu item `11` reads device name, serial, hardware, firmware, BLE address and
-controller UUID. No persistent controller state changes.
-
-## Programmi irrigazione
-
-`IrrigationProgram` ricostruisce `configIrriV5()` dall'APK. `write_program()`
-modifica memoria persistente controller; non viene esposto da CLI.
-
-```python
-from woobee_api import Days, ProgramCycle, Schedule, TimeOfDay, ZoneDurations
-
-schedule = Schedule(
-    number=1,
-    name="Giardino",
-    days=Days.MONDAY | Days.WEDNESDAY | Days.FRIDAY,
-    starts=(TimeOfDay(7),),
-    zones=ZoneDurations.minutes(one=10, two=10, three=10, four=10),
-    water_budget=80,
-    zone_pause_seconds=30,
-)
-# await woobee.write_schedule(schedule)
-# schedules = await woobee.read_schedules()
-```
-
-`water_budget` is controller percentage; `zone_pause_seconds` is pause between
-zones. Both are recovered from `configIrriV5()`.
-
-## Backup, clock and faults
-
-`ControllerBackup` stores this client's schedule model as JSON. It is not a
-MySOLEM app-export format. Backup reads controller schedules; restore rewrites
-every schedule present in JSON.
-
-```python
-from pathlib import Path
-from woobee_api import ControllerBackup
-
-backup = await woobee.backup()
-Path("wb4-backup.json").write_text(backup.to_json())
-
-# await woobee.restore(ControllerBackup.from_json(Path("wb4-backup.json").read_text()))
-# await woobee.sync_clock()
-# await woobee.reset_valve_faults()
-```
-
-Menu items `7`–`10` provide backup, restore, clock sync and fault reset.
-Restore, clock sync and reset require literal confirmation.
-
-Periodic example: every three days, phase starts today.
-
-```python
-every_three_days = Schedule(
-    number=2,
-    cycle=ProgramCycle.PERIODIC,
-    period_length=3,
-    synchronization_day=0,
-)
-```
-
-Verify authentication only, without actuator commands:
-
-```bash
-python scripts/authenticate_woobee.py 00000000-0000-0000-0000-000000000001
-```
-
-## Embedded asynchronous client (SBR-90)
-
-The client now lives in `custom_components/solem_woobee/woobee_api`, following
-hass-sorgenia's embedded API layout. Update imports from the former root
-`solem_woobee` package. It has no Home Assistant imports, including type-only
-imports, and is shipped with the integration; no PyPI release is planned.
-Both the standalone client and the integration require Python 3.14+. The
-integration targets HA 2026.8.0+. CI uses Python 3.14 from `.python-version`
-for all jobs and tests the client without HA installed.
-
-```python
-from bleak import BleakClient
-from woobee_api import WooBeeConnection
-
-async with WooBeeConnection("AA:BB:CC:DD:EE:FF", BleakClient) as api:
-    state = await api.read_state()
-    info = await api.read_device_info()
-```
-
-The factory returns a fresh disconnected transport implementing `BLETransport`.
-HA may supply its own address-bound adapter to choose a Bluetooth proxy; the
-client knows nothing about HA. `WooBeeConnection` owns connection, authentication,
-subscriptions and disconnect. Alternatively `SolemSession(connected_client,
-gatt)` borrows an existing connection: use it as an async context manager, or
-call `aclose()` in `finally`. Borrowing removes notifications but never disconnects
-the caller's connection. A connection must have only one session owner; do not
-write to it through another client. Scopes cannot be reused.
-
-Authentication uses a fresh 16-byte challenge for every connection, the recovered
-protocol's standard product key and the exact success acknowledgement. This
-product key is a protocol constant, not a user credential. There is no observed
-token expiry or token refresh API. Unknown auth notifications are not treated as
-credential rejection. `AuthenticationError` means authentication is required;
-`SessionTimeoutError` (a `ConnectivityError` and `TimeoutError`) means no completed
-exchange within the deadline. Invalid challenges, response commands and malformed
-state raise `InvalidResponseError`. BLE failures raise `ConnectivityError`.
-
-Deadlines: connect/auth 10 seconds each; an entire request and all its reply
-pages 20 seconds; each notification teardown/disconnect 5 seconds. Waiting for
-the per-session operation lock is outside these deadlines. Notification queues
-and responses are capped at 128 frames. All requests in an API operation share
-the same lock, including state/identity reads and program writes. Timeout,
-cancellation or transport failure invalidate the session and remove callbacks;
-create a new connection scope and authenticate again. V6 offers no transaction
-ID, so responses from an interrupted exchange must never be reused.
-
-There are **zero automatic retries**, including read operations. Callers may
-retry a failed read with a new connection and their own bounded backoff. A start,
-stop or write may already have reached hardware when its response times out:
-refresh state rather than replaying it. Manual durations use positive whole
-minutes, zones 1–4 and a 24-bit seconds wire limit (279620 minutes). HA validates
-that wire limit but no smaller firmware limit has been established. An
-acknowledgement reports controller state, not measured water flow.
-
-`ControllerIdentity` normalizes BLE MACs and CoreBluetooth UUIDs. Its ID is the
-address; four `ZoneIdentity` objects have IDs `<address>_zone_<n>`. Names, serials
-and UUID metadata never change registry identity. Missing zone durations remain
-`None`, while a reported zero remains zero. Battery and input flags remain raw.
-Programs/backup APIs are preserved for the CLI, outside the initial HA scope.
-
-Tests use synthetic BLE transports and anonymous response fixtures. No credentials
-or controller-specific secrets are required. Hardware behavior, battery scale,
-polling cadence and Bluetooth proxy behavior still need device validation; tests
-never connect to hardware or actuate valves.
-
-## Home Assistant configuration
-
-The integration domain is `solem_woobee` (Home Assistant 2026.8.0+, Python
-3.14). Copy `custom_components/solem_woobee` to the HA configuration directory,
-restart, and add **SOLEM WooBee** from Devices & services. Select the WooBee V2 /
-WB-4 visible to Home Assistant Bluetooth. Automatic discovery is deferred until
-an advertisement matcher is verified; unrelated Bluetooth devices can appear
-in the selector and will fail protocol validation.
-
-Setup authenticates and reads identity and state, without changing irrigation.
-The BLE challenge uses the protocol's built-in key: no account, password or
-credential reauthentication is available. Timeouts indicate connectivity
-failure, not confirmed credential rejection. Each normalized BLE address can
-be configured once. Connections and notifications are released after each
-validation; unavailable controllers retry setup through Home Assistant.
-
-The coordinator performs an initial read during setup. Periodic polling runs
-every five minutes only while entities subscribe; with no active entities it
-stops automatically. Read-only sensor and binary_sensor platforms share this snapshot. Commands are
-implemented as described below. The client is embedded, not fetched
-from PyPI, and shares the integration version in `manifest.json`.
-
-Integration tests: install `requirements_test.txt` and run
-`python -m pytest tests/integration -q`. The existing client tests continue to
-run with `python -m unittest discover -s tests -v`, without Home Assistant.
-
-The local client wheel exposes `woobee_api` directly, so CLI tools and client
-tests do not load the Home Assistant integration package. HACS still installs
-the client at `custom_components/solem_woobee/woobee_api`; integration modules
-use relative imports. All Python imports stay at module top level.
-
-
-### Read-only entities
-
-All four zones belong to the physical controller device. Names are translated
-in English and Italian. Entity unique IDs use the normalized configured address plus
-zone number and measurement key; renaming or receiving serial/UUID metadata
-does not replace registry entries.
-
-| Entity | Source / interpretation | Metadata |
-| --- | --- | --- |
-| Zone 1–4 remaining time | Reported seconds; missing page is unknown, zero stays zero | Duration, seconds; no state class (countdown, no long-term statistics) |
-| Zone 1–4 irrigating | Reported active zone equals this zone | Running; controller status, not measured water flow |
-| Zone 1–4 valve fault | Zone in the client's decoded fault bitmap | Problem, diagnostic |
-| Irrigation enabled / manual irrigation | Reported status flags | Read-only binary sensors |
-| Sensor input open | Raw open flag; does not infer rain or soil moisture | Diagnostic |
-| Clock alarm | Reported clock alarm flag | Problem, diagnostic |
-| Last read successful | Success of the shared snapshot read | Connectivity, diagnostic |
-| Signal strength | Latest connectable advertisement RSSI cached by HA, sampled after a successful poll | Diagnostic, signal strength, dBm, measurement |
-| Last fetched | UTC completion time of the last successful full poll | Diagnostic, timestamp; remains visible during outages |
-| Battery raw value | Unscaled battery byte | Diagnostic, disabled by default, no unit/device/state class |
-
-Connectivity describes the **last read**, not an always-connected BLE link; the
-client disconnects after every read. On a failed update it turns off, while all
-other enabled entities except Last fetched become unavailable until recovery. Missing optional
-zone durations remain available with an unknown value. Values update at the
-five-minute polling interval; countdowns are not extrapolated between reads.
-
-Signal strength and Last fetched are enabled by default. RSSI comes from Home
-Assistant Bluetooth advertisements (including proxy data), not a connected-device
-RSSI read; the cached advertisement may predate the poll. Missing advertisement
-data is unknown. No additional scans or BLE connections are requested. Last
-fetched advances only after a successful full poll (including setup), never on
-failed polls or command-only state reads. It is not the controller clock or an
-advertisement timestamp and is not restored across reloads.
-
-Enable the raw battery entity from the device's entity settings only if useful
-for investigation. Its scale is unverified: it must not be interpreted as a
-percentage or voltage. Rain-delay units, active-program labels and input
-alert meanings are not exposed because the shared client provides no verified
-measurement/interpretation for them. No configuration entities or additional
-platforms are justified by these read-only fields.
-
-### Examples and troubleshooting
-
-To monitor irrigation, add the four **Zone N irrigating** binary sensors and
-**Zone N remaining time** sensors to a dashboard. Use the entity picker to select
-them: entity IDs depend on the controller name and server language. A remaining
-time of zero is reported idle time; unknown means its duration page was absent.
-
-Example automation: a one-minute timed run at 06:00. Replace the entity ID
-using HA's entity picker and enable only after supervised validation. Controller
-programs remain separate and can conflict with HA schedules; starts during any
-active irrigation are rejected.
+Example: a one-minute run at 06:00. Replace the entity ID and test under supervision.
 
 ```yaml
 alias: Garden timed manual irrigation
@@ -353,72 +86,62 @@ actions:
 mode: single
 ```
 
-The controller owns the run duration; this automation does not rely on a delayed
-HA close action. HA observes timed completion on its next poll.
+The controller handles timed completion. Starts are rejected while any zone is
+active. Closing an inactive zone sends no stop; closing the active zone uses
+the controller’s global stop after reading state. Another application can race
+that read and stop. Avoid concurrent control through MySOLEM.
 
-To receive valve-fault notifications, create an automation in **Settings →
-Automations & scenes**. Choose an **Entity → State** trigger, select the zone's
-**valve fault** entity and set **To** to **On**. Add your preferred notification
-action. Repeat for the other zones. This reports controller faults and does not
-prove whether water is flowing.
+Commands are never retried automatically. A timeout can occur after execution;
+check controller state before retrying. Reported valve state does not measure
+water flow. HA does not expose controller programs or backup/restore.
+See [manual irrigation](docs/manual-irrigation.md) for actions and validation.
 
-If all state entities become unavailable, check **Last read successful**, the
-integration logs and the controller's Bluetooth reachability. Keep it within
-range of a connectable HA Bluetooth adapter/proxy and disconnect other apps
-that may occupy its BLE connection slot. Wait for the next five-minute poll or
-reload the integration after restoring connectivity. Repeated failure logs are
-suppressed; recovery is logged once. There is no password to reset.
+## Monitoring and troubleshooting
 
-If only a duration is unknown, the shared read succeeded but the controller
-omitted that optional page. Do not replace it with zero. If a diagnostic entity
-is missing from the dashboard, check whether it is disabled in the device's
-entity settings. Raw battery values cannot establish battery charge; there is
-no supported percentage threshold for low-battery automations.
+Add **Zone N irrigating** and **Zone N remaining time** to a dashboard. For fault
+notifications, create an automation with an **Entity → State** trigger on a
+zone’s **valve fault** entity, **To: On**, and a notification action.
 
-### Remove the integration
+If reads fail, check Bluetooth range and adapter/proxy availability, and close
+apps that may hold the BLE connection. Wait for the next poll or reload the
+integration. Logs record the first failure and recovery. There is no password
+to reset. If only a duration is unknown, the controller omitted that page;
+unknown should not be treated as zero.
 
-In **Settings → Devices & services → SOLEM WooBee**, delete the controller entry.
-Repeat for each configured controller. To uninstall the custom integration,
-remove `custom_components/solem_woobee` (or uninstall through HACS if installed
-there), then restart Home Assistant. Removing the integration does not modify
-the controller's locally stored irrigation programs.
+Enable **Battery raw value** in the device’s entity settings if needed for
+investigation. Its scale is unverified; do not use it as percentage or voltage.
+Rain-delay units and active-program labels are not exposed.
 
-### Quality policy
+Download diagnostics from the integration entry menu. The integration payload
+contains cached operational fields without controller identifiers. Review the
+complete download and logs before sharing; HA metadata and exception tracebacks
+may contain personal details. See [diagnostics](docs/diagnostics-and-validation.md).
 
-[Quality Scale tracking](custom_components/solem_woobee/quality_scale.yaml)
-records implemented rules, pending work and justified exemptions. It is a
-project checklist, not an awarded Home Assistant tier. New platforms must
-complete their entity-specific rules and lifecycle tests before being marked
-done. See [audit and validation](docs/quality-scale.md).
+## Change the Bluetooth address
 
-### Manual irrigation commands
+Use the entry menu’s **Reconfigure** action for the same physical controller.
+It validates the new address against the serial already recorded in HA and
+preserves entity identities. If the original serial is missing, restore the old
+connection and reload first. Replacement hardware needs a new entry.
+See [address changes and discovery](docs/bluetooth-discovery.md).
 
-Four **Zone N** water valves expose standard HA open/close actions and reported
-activity. Opening uses the zone's default duration (initially one minute), saved
-in HA with `solem_woobee.set_default_duration`. For a single run with an explicit
-duration use `solem_woobee.start_irrigation`; both actions target a valve and take
-whole `minutes` from 1 to 279620 (wire limit, not a recommended watering duration).
+## Remove
 
-Closing re-reads state and sends the client's global stop **only if that zone is
-active**; closing an inactive zone does not intentionally stop another zone.
-There is no atomic per-zone stop: another application can race the read/stop.
-The **Stop all irrigation** button remains an explicit controller-wide stop.
-Starts are rejected while any zone is active, commands are never automatically
-retried, and errors/unconfirmed results raise HA action errors. See
-[manual irrigation](docs/manual-irrigation.md) for examples, default persistence,
-consistency, compatibility and supervised hardware verification.
+Delete each controller entry under **Settings → Devices & services → SOLEM WooBee**.
+To uninstall, remove the integration through HACS or delete
+`custom_components/solem_woobee/`, then restart HA. Controller programs are
+stored on the device and remain there.
 
-Diagnostics, automated test evidence and the pending WB-4 hardware validation
-procedure are documented in [diagnostics and validation](docs/diagnostics-and-validation.md).
+## Development
 
-### Bluetooth address changes
+- [Standalone client and protocol](docs/client.md)
+- [Coordinator and identity](docs/coordinator.md)
+- [Protocol research](docs/research/solem-woobee-wb4-home-assistant.md)
+- [Quality checks and remaining work](docs/quality-scale.md)
+- [Dependencies and provenance](docs/dependency-provenance.md)
+- [Release procedure](docs/releasing.md)
 
-Use the entry menu’s **Reconfigure** action to validate a new address for the
-same controller while preserving entity/device identity. A previously recorded
-matching serial is required. See [Bluetooth discovery and address changes](docs/bluetooth-discovery.md)
-for instructions, identity migration details and the pending supervised
-advertisement evidence. Automatic discovery/address updates remain unavailable.
-
-## License
-
-The integration and embedded client are distributed under the [MIT License](LICENSE).
+The protocol is unofficial and may change with firmware. Clean-install and
+supervised hardware acceptance remain pending; no official Quality Scale tier
+is claimed. Source is licensed under [MIT](LICENSE); see the provenance guide
+for third-party assets and protocol-origin review.

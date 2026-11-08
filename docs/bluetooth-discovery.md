@@ -1,43 +1,60 @@
-# Bluetooth discovery and address changes (SBR-101)
+# Bluetooth addresses and discovery
 
-## Evidence and remaining discovery work
+## Reconfigure a controller
 
-The supported hardware scope remains **WooBee V2 / WB-4, type 180,
-firmware 7.0.2**. `AGENTS.md`, `woobee-gatt.json` and the research document
-record protocol/GATT evidence. They do not provide an advertisement fixture
-with verified manufacturer/service data and a documented matcher. The research
-document mentions a historical advertising-only bugreport; its raw capture and
-provenance are not in this checkout. No controller or supervised capture was
-available in this agent workspace.
+In **Settings → Devices & services → SOLEM WooBee**, open the entry menu and
+choose **Reconfigure**. Enter the new BLE MAC address or CoreBluetooth UUID,
+confirm it is the same physical controller and submit. This updates HA’s
+connection address, not the controller’s address.
 
-Consequently automatic discovery and automatic address updates remain **TODO**.
-There is no new manifest matcher or Bluetooth discovery step. A GATT service
-UUID is not proof that a device advertises that UUID. A local name alone is not
-proof of WB-4 support. Do not use another SOLEM product's advertisement format
-or silently generalize the type-180 protocol branch.
+Validation authenticates and reads identity/state without sending irrigation or
+configuration commands. The candidate serial must match the serial already in
+the entry’s device registry record. Missing or mismatched serials are rejected.
+If the original serial is missing, restore the old connection and reload to read
+it before retrying. Serial matching is an identity check, not cryptographic proof.
 
-Before implementing discovery, collect supervised scan evidence from the known
-WB-4. Record date, operator, physical model/type, firmware, scanner/backend and
-versions; capture local name, service UUIDs, manufacturer IDs and exact bytes,
-service data and connectability. Preserve the relationship between observations
-at the original and changed addresses in private evidence. Redact addresses and
-serials consistently in public fixtures; retain byte offsets/lengths necessary to
-review the matcher. Establish whether any advertised identifier survives address
-changes and matches a read identity. Do not automatically map by name or address.
+Addresses reserved by other entries are rejected before and after validation.
+Failures or cancellation leave entry data unchanged. Success saves the address
+and reloads the entry; if the later reload fails, HA retries setup with the saved
+address. Options, device customizations and entity identities are preserved.
+Replacement hardware should be added as a new entry after removing the old one.
 
-For a supervised advertisement-only capture, an operator with Bleak available
-can run this snippet locally, after replacing the address. It scans for ten
-seconds and prints only the selected device. It opens no GATT connection and
-invokes no controller commands. Scanning can send BLE scan requests. Confirm
-connectability separately with the Home Assistant Bluetooth scanner evidence;
-Bleak's generic advertisement object does not establish it.
+## Registry identity
+
+The first successful reconfiguration copies the original `address` into
+`identity_address`. Later changes update only the transport `address`.
+Config-entry unique IDs, device identifiers and entity unique IDs keep the
+original identity address. Entries without `identity_address` use `address`.
+This additive field requires no bulk registry migration.
+
+Both the current connection address and original identity address remain reserved
+to prevent duplicate entries or colliding registry IDs. All platforms use the
+frozen identity, preserving history and automation references.
+
+## Automatic discovery: pending
+
+There is no verified WB-4 advertisement fixture or stable advertised identity in
+this repository. The [redacted GATT profile](examples/woobee-gatt.json) records
+services, not advertisements. A service UUID in GATT does not establish that it
+is advertised, and a local name alone cannot identify supported hardware.
+Automatic discovery and address updates remain TODO.
+
+To establish a matcher, collect advertisements from WB-4/type 180/firmware 7.0.2.
+Record date, model, firmware, scanner/backend and versions, local name, service
+UUIDs, manufacturer IDs/data, service data and connectability. Check stability
+across normal advertising/connection states and address changes. Keep raw
+identifiers private; publish consistently redacted fixtures with byte offsets
+and lengths preserved. Compare any stable advertised identity with read identity.
+
+This ten-second scan opens no GATT connection. Set the address locally; output
+contains private identifiers and must be reviewed before sharing.
 
 ```python
 import asyncio
 import json
 from bleak import BleakScanner
 
-ADDRESS = "replace-with-the-supervised-controller-address"
+ADDRESS = "replace-with-your-controller-address"
 
 async def capture():
     found = await BleakScanner.discover(timeout=10, return_adv=True)
@@ -61,55 +78,7 @@ async def capture():
 asyncio.run(capture())
 ```
 
-Repeat under operator supervision as needed to establish stability across normal
-advertising/connection states. Do not reset, change firmware, start/stop zones,
-sync clocks, or write programs/schedules to generate evidence. No controller
-writes are authorized by SBR-101. Simulated BLE tests cannot replace this capture.
-
-## Reconfigure an existing controller
-
-In **Settings → Devices & services → SOLEM WooBee**, open the entry menu and
-choose **Reconfigure**. Enter its new Bluetooth MAC address (or CoreBluetooth
-UUID), confirm that it is the same physical controller, and submit. This changes
-the HA connection address; it does not change the controller's Bluetooth address.
-No device password is required. Authentication and identity/state reads are used
-for validation; no irrigation/configuration command is sent.
-
-The candidate must be reachable through HA Bluetooth, authenticate successfully,
-and return a valid snapshot. Its serial must match a serial previously recorded
-on this entry's device registry record. Missing or mismatched candidate serials
-are rejected. If the original serial is missing, the flow fails closed: restore
-the old connection and reload the entry to read/register its serial before
-retrying. A confirmation checkbox cannot substitute for serial evidence. This
-limitation is intentional because the protocol permits missing identity pages.
-Serial continuity is a device identity check, not a cryptographic attestation.
-
-The flow rejects addresses reserved by another entry, including that entry's
-original identity address, before validation and again after the asynchronous
-read. Failed validation, collisions and cancellation leave entry data unchanged.
-Successful validation updates the connection address and reloads the entry.
-If a later reload cannot connect, HA uses its existing setup retry behavior; the
-validated new address remains saved. Retry reconfiguration if necessary. Options
-and entity/device customizations remain attached to the existing entry.
-
-## Address-based unique ID migration decision
-
-There is **no rewrite** of existing config-entry unique IDs, entity unique IDs or
-device identifiers, and no automatic switch to serial-based IDs. On the first
-successful reconfiguration, the old `address` is copied to `identity_address` in
-entry data; only `address` becomes the new transport address. Later changes keep
-`identity_address` unchanged. Entries without the new field continue deriving
-identities from their existing address. The additive field is backward compatible
-with existing version-1 entries; no bulk registry migration is needed.
-
-The coordinator uses the transport address for BLE and the identity address for
-all platforms and the device registry. This preserves existing entity IDs,
-registry IDs, history/automation references, device association and disabled
-entities. The old identity address remains reserved to avoid creating a second
-entry with colliding registry identifiers. The current address is also reserved,
-including when its config-entry unique ID is still the old address.
-
-Reconfiguration is for the same physical controller. For replacement hardware,
-remove the old entry and add the replacement. No automatic discovery updates are
-implemented: a future implementation must establish a verified stable advertised
-identity before updating an entry, while respecting this frozen legacy identity.
+Bleak’s generic advertisement object does not establish connectability; record
+that separately through HA’s Bluetooth scanner. Scanning may send scan requests.
+No reset, firmware update, irrigation or configuration write is needed to collect
+this evidence. Do not infer WooBee support from other SOLEM product formats.
