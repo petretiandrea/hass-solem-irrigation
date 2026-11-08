@@ -41,7 +41,8 @@ jobs:
         with:
           python-version-file: .python-version
       - run: python -m pip install -e . -r requirements_test.txt "homeassistant==${{ matrix.homeassistant }}" "pytest-homeassistant-custom-component==${{ matrix.pytest_plugin }}"
-      - run: python -m pytest tests/integration -q --cov=custom_components.solem_woobee --cov-branch --cov-report=term-missing --cov-report=json
+      - run: python -m coverage run --branch --source=custom_components/solem_woobee -m unittest discover -s tests -v
+      - run: python -m pytest tests/integration -q --cov=custom_components.solem_woobee --cov-branch --cov-append --cov-report=term-missing --cov-report=json
       - run: python scripts/check_ha_coverage.py
       - run: python -m compileall -q custom_components scripts tests
   hassfest:

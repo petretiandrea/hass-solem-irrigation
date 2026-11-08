@@ -107,9 +107,12 @@ rules:
     comment: 'No user account or renewable credential: fixed protocol key and fresh challenge on every
       BLE connection. Rejection is retried with a new session.'
   test-coverage:
-    status: todo
-    comment: HA wrapper modules including valve and read platforms gated above 95% per module. Embedded client modules
-      need complete coverage assessment; wrapper results alone do not meet the whole-integration rule.
+    status: done
+    comment: SBR-99 combines standalone and HA branch coverage independently on HA 2026.8.0 and 2026.10.4;
+      revalidated after merging main cc6aa14 on 2026-11-08 (55 standalone and 126 HA tests per target).
+      all 22 shipped modules measured 100% lines and branches (0/0 where no branches). CI requires >95%
+      separately per metric, rejects missing modules and enforces 100% config-flow coverage. Exact counts
+      and synthetic failure/cancellation/cleanup test evidence are in docs/quality-scale.md. No tier claimed.
   devices:
     status: done
     comment: All 23 registry entities share the normalized controller device; registry associations remain
