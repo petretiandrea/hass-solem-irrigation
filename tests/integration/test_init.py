@@ -43,8 +43,8 @@ async def test_probe_closes_session(hass, failure):
     client.read_device_info.side_effect = failure
     scope = AsyncMock()
     scope.__aenter__.return_value = client
-    with patch("homeassistant.components.bluetooth.async_ble_device_from_address", return_value=object()), patch(
-        "custom_components.solem_woobee.connection.WooBeeConnection", return_value=scope,
+    with patch(
+        "custom_components.solem_woobee.connection.connection_scope", return_value=scope,
     ):
         if failure:
             with pytest.raises(type(failure)):

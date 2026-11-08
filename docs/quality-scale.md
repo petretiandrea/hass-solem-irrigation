@@ -62,6 +62,31 @@ is not gated.
 | Mapping validation and typed boundaries | `tests/integration/test_typing_boundaries.py` |
 | Frame parsing, schedules, backup validation and fake BLE exchange | `tests/test_client.py`, `test_coverage_paths.py`, `test_session.py` |
 | CLI inspection and menu behavior | `tests/test_inspect_script.py`, `test_menu.py` |
+| HA connector ownership, current device selection, establishment failures, cancellation and authentication cleanup | `tests/integration/test_connection.py` |
+
+SBR-109 reviews `async-dependency`, `inject-websession`, `test-coverage`,
+`entity-unavailable`, `log-when-unavailable` and `action-exceptions`.
+HA connection establishment now uses `establish_connection` with
+`BleakClientWithServiceCache` and a callback for current connectable device
+selection. The `bluetooth` manifest dependency supplies the connector version
+appropriate to HA (4.6.3 on the minimum target, 4.7.1 on the newer target).
+The embedded standalone client gains no HA dependency. An already connected
+owned session skips direct `connect()` but still authenticates, removes
+subscriptions and disconnects on exit or failure. Connector retries finish
+before authentication or commands; commands are never replayed. The existing
+coordinator availability, translated errors and outage logging behavior remains.
+Connection retry tests simulate BLE; physical range, proxy behavior and the
+reported snapshot failure still require hardware verification. Existing TODOs
+below remain open; no Quality Scale tier is claimed.
+
+SBR-109 local validation (2026-11-08): 58 standalone tests and 145 HA tests
+pass on both documented HA/plugin pairs. The minimum pair was also tested
+with its Bluetooth manifest pins, including connector 4.6.3; the newer pair
+used connector 4.7.1. Combined coverage measured 100% lines and branches in
+all 22 shipped modules and passed the per-module gate. Strict mypy, Ruff,
+compileall, source-layout validation, wheel/sdist build and typed-package
+validation passed. The minimum HA target emitted the existing 78 mocked
+Bluetooth socket warnings. Candidate hassfest and HACS validation run in CI.
 
 The latest recorded combined validation (2026-11-08, SBR-103 merge) passed
 58 standalone tests and 134 HA tests on each matrix target. All 22 shipped
