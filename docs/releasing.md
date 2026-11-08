@@ -80,9 +80,7 @@ are pending; simulated tests cannot satisfy the physical checks.
 Release Please reads Conventional Commits and maintains a release PR containing
 `CHANGELOG.md`, the integration manifest and `.release-please-manifest.json`.
 The last file is automation bookkeeping, not a second runtime/package version;
-Hatch continues reading only the integration manifest. Its initial `0.0.0` value
-means no release exists yet. The Python strategy starts the first release at
-0.1.0, matching the prepared integration version. It preserves the dynamic
+Hatch continues reading only the integration manifest. It records the latest merged release version (currently 0.2.0). It preserves the dynamic
 version in `pyproject.toml`; no standalone client version is introduced.
 
 Use squash-merge PR titles such as `fix: handle a BLE disconnect` (PATCH),
@@ -125,11 +123,18 @@ See [GitHub workflow triggering rules](https://docs.github.com/en/actions/how-to
    release PR. This setup PR does not publish a release. Do not merge the first
    generated release PR until its source-install acceptance evidence is ready.
 3. After the release PR merges, Release Please creates a **draft GitHub release**
-   for that merge commit with the matching version tag and changelog notes.
+   for that merge commit with the matching version tag name and changelog notes.
+   GitHub creates the actual tag on publication. While any stable versioned draft
+   exists, the workflow pauses creation of further release PRs, including on
+   reruns. This prevents replaying historical commits when the draft has no tag.
    A draft is not offered as an update by HACS. Wait for main CI on the exact
    candidate SHA to pass; verify tag/target and manifest version, review the notes,
    and obtain first-release authorization before publishing through GitHub
    Releases. Complete and record the fresh HACS install check above.
+   After publishing a draft, run **Release Please** manually on main (or wait for
+   the next push) to resume release PR preparation. No publication event workflow
+   is required. If a draft is abandoned, inspect its merged version and recovery
+   baseline before removing it; deletion alone is not a version rollback.
 4. If automation fails, check Actions permissions, PR workflow approval and CI, then rerun
    **Release Please** on main. Inspect existing release PRs/drafts before any
    manual recovery; do not delete lifecycle labels or move published tags.
