@@ -97,6 +97,12 @@ SBR-108 edit consolidates those topics and removes obsolete PR reports while
 retaining the checklist's TODOs and test evidence. Applicable documentation
 rules retain their status; this edit changes no integration behavior.
 
+The release workflow creates drafts before checking for pending stable versioned
+drafts. It prepares the next release PR only when none remain, preserving manual
+publication and avoiding history replay before GitHub creates the tag. See the
+[release procedure](releasing.md#publish-and-recover). This CI change leaves HA
+adapter tests, coverage and rule statuses unchanged.
+
 References: [Quality Scale](https://contributors.home-assistant.io/core/quality-scale/),
 [installation instructions](https://contributors.home-assistant.io/core/quality-scale/docs-installation-instructions/),
 [known limitations](https://contributors.home-assistant.io/core/quality-scale/docs-known-limitations/).

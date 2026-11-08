@@ -35,7 +35,8 @@ out of public reports.
 
 Release Please reads Conventional Commits and updates `CHANGELOG.md`, the
 manifest and `.release-please-manifest.json` in a release PR. The latter is bot
-bookkeeping. `pyproject.toml` keeps its dynamic version.
+bookkeeping for the latest merged release version. `pyproject.toml` keeps its
+dynamic version.
 
 Use squash titles such as `fix: SBR-123 handle a BLE disconnect` (patch),
 `feat: add a sensor` (minor), or `feat!: change an action schema` (breaking).
@@ -65,9 +66,15 @@ is the only current HACS ignore, pending installed validation.
 1. Review the Release Please PR: version, notes, compatibility, migrations and
    acceptance evidence. Preserve its generated metadata and lifecycle labels.
 2. Approve its workflows, wait for candidate checks and merge after review.
-3. Release Please creates a draft GitHub release. Check the tag target, manifest
-   version and main CI on that exact SHA. Obtain maintainer release authorization
-   before publishing. Complete the fresh HACS install check above.
+3. Release Please creates a draft GitHub release with a version tag name; GitHub
+   creates the actual tag on publication. While a stable versioned draft exists,
+   the workflow pauses further release PRs, including on reruns, to avoid
+   replaying historical commits before the tag exists. Check the target SHA,
+   manifest version and main CI. Obtain maintainer release authorization before
+   publishing, then complete the fresh HACS install check above. Run Release
+   Please manually on main after publication, or wait for the next push, to
+   resume PR preparation. If abandoning a draft, review the merged version and
+   recovery baseline before deleting it; deletion does not roll back the version.
 4. If automation fails, inspect permissions, workflow approvals and existing
    PRs/drafts, then rerun Release Please on main. Preserve published tags.
 5. For rollback, reinstall a previously validated version and restart HA. If none
