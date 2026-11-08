@@ -1,9 +1,13 @@
 {
   "domain": "solem_woobee",
   "name": "SOLEM WooBee",
-  "codeowners": ["@petretiandrea"],
+  "codeowners": [
+    "@petretiandrea"
+  ],
   "config_flow": true,
-  "dependencies": ["bluetooth"],
+  "dependencies": [
+    "bluetooth"
+  ],
   "documentation": "https://github.com/petretiandrea/hass-solem-irrigation",
   "integration_type": "device",
   "iot_class": "local_polling",
