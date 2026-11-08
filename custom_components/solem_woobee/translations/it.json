@@ -84,5 +84,31 @@
         }
       }
     }
+  },
+  "exceptions": {
+    "authentication_failed": {
+      "message": "Autenticazione del programmatore non riuscita; il prossimo aggiornamento apre una nuova sessione."
+    },
+    "snapshot_failed": {
+      "message": "Impossibile leggere lo stato del programmatore; controllare la raggiungibilità Bluetooth e i dati ricevuti."
+    },
+    "invalid_irrigation": {
+      "message": "La zona deve essere un intero da 1 a 4 e la durata un numero intero da 1 a {max_minutes} minuti."
+    },
+    "invalid_minutes": {
+      "message": "La durata deve essere un numero intero da 1 a {max_minutes} minuti."
+    },
+    "irrigation_active": {
+      "message": "Irrigazione già attiva. Arrestare tutte le irrigazioni prima di avviare una zona."
+    },
+    "state_unconfirmed": {
+      "message": "Il programmatore non ha confermato lo stato di irrigazione richiesto. Il comando potrebbe essere stato rifiutato o essere ancora in corso; controllare il dispositivo prima di inviare un altro comando."
+    },
+    "command_failed": {
+      "message": "Impossibile confermare il comando di irrigazione. Controllare il Bluetooth e lo stato del programmatore prima di riprovare; il comando non è stato ripetuto."
+    },
+    "command_cancelled": {
+      "message": "Comando di irrigazione annullato; esito sconosciuto. Controllare lo stato del programmatore prima di inviare un altro comando."
+    }
   }
 }
