@@ -55,7 +55,7 @@ rules:
   docs-installation-instructions:
     status: done
     comment: README.md describes WB-4 BLE scope, manual installation/configuration and removal.
-      SBR-107 docs/releasing.md and release.yml document versioned HACS releases with candidate CI and draft review.
+      SBR-107 docs/releasing.md and release.yml document Release Please version/changelog PRs, candidate CI and draft publication review.
   docs-removal-instructions:
     status: done
     comment: README.md describes WB-4 BLE scope, manual installation/configuration and removal.

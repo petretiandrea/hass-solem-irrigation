@@ -1,94 +1,33 @@
-name: Prepare release
+name: Release Please
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      commit:
-        description: Full reviewed commit SHA on main with passing CI
-        required: true
-        type: string
 
 permissions:
   contents: read
-  actions: read
 
 concurrency:
-  group: prepare-release
+  group: release-please
   cancel-in-progress: false
 
 jobs:
-  prepare:
-    # Use the reviewed workflow from main, even if dispatch is attempted elsewhere.
+  release:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      actions: read
-    env:
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
-      CANDIDATE: ${{ inputs.commit }}
     steps:
-      - name: Validate candidate input
-        run: |
-          [[ "$CANDIDATE" =~ ^[0-9a-f]{40}$ ]] || {
-            echo 'Expected a full lowercase commit SHA'; exit 1;
-          }
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.commit }}
-          fetch-depth: 0
-      - name: Require main ancestry and passing candidate CI
-        run: |
-          git fetch origin main
-          git merge-base --is-ancestor "$CANDIDATE" origin/main
-          for workflow in client.yml validate.yml; do
-            runs=$(gh run list --workflow "$workflow" --commit "$CANDIDATE" \
-              --branch main --event push --limit 1 --json conclusion)
-            if ! jq -e 'length == 1 and .[0].conclusion == "success"' <<< "$runs"; then
-              echo "Latest main push run of $workflow must pass for $CANDIDATE"
-              exit 1
-            fi
-          done
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version-file: .python-version
-      - name: Validate version and HACS source distribution
-        id: version
-        run: |
-          python scripts/check_distribution.py
-          version=$(jq -r .version custom_components/solem_woobee/manifest.json)
-          [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]
-          GITHUB_REF="refs/tags/v$version" python scripts/check_distribution.py
-          echo "tag=v$version" >> "$GITHUB_OUTPUT"
-      - name: Reject existing tags or releases
+      - name: Require release automation token
         env:
-          TAG: ${{ steps.version.outputs.tag }}
+          RELEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
         run: |
-          if git show-ref --verify --quiet "refs/tags/$TAG"; then
-            echo "Tag $TAG already exists; published versions must never be reused"
+          if [[ -z "$RELEASE_TOKEN" ]]; then
+            echo '::error::Configure RELEASE_PLEASE_TOKEN as documented in docs/releasing.md; it is required for CI on generated release PRs.'
             exit 1
           fi
-          # Listing rather than treating every API error as a missing release.
-          releases=$(gh api --paginate "repos/$GH_REPO/releases" --jq '.[].tag_name')
-          if grep -Fxq "$TAG" <<< "$releases"; then
-            echo "Release $TAG already exists; review the existing draft instead"
-            exit 1
-          fi
-          # A stable release must advance beyond every previous stable release.
-          while IFS= read -r previous; do
-            if [[ "$previous" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] && [[ "$previous" != "$TAG" ]]; then
-              newest=$(printf '%s\n' "$previous" "$TAG" | sort -V | tail -n 1)
-              if [[ "$newest" != "$TAG" ]]; then
-                echo "Candidate $TAG must be newer than $previous"
-                exit 1
-              fi
-            fi
-          done <<< "$releases"
-      - name: Create draft with generated release notes
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          gh release create "$TAG" --target "$CANDIDATE" --draft \
-            --title "$TAG" --generate-notes
-          echo "Draft $TAG prepared for $CANDIDATE. Review notes and acceptance evidence before publishing." >> "$GITHUB_STEP_SUMMARY"
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
+        with:
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          target-branch: main
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

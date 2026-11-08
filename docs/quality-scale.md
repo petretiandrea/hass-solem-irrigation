@@ -602,10 +602,18 @@ tier claim. Remaining checklist TODOs and physical-evidence limits still apply.
 
 ## SBR-107 release strategy
 
-Reviewed the official Quality Scale and release guidance. The affected
-docs-installation-instructions rule is supported by docs/releasing.md and the
-manually dispatched release.yml workflow: one manifest version, matching release
-tag, exact-candidate CI gates and draft review before publication. HACS consumes
-the tagged source tree. No HA adapter behavior changes. Clean-install/hardware
-acceptance, branding and provenance gaps remain as recorded above; no tier or
-first-release validation is claimed.
+Reviewed the official docs-installation-instructions rule. Release Please uses
+Conventional Commits to prepare reviewed version/changelog PRs, updates the
+integration manifest via JSONPath and creates draft GitHub releases after merge.
+The dynamic Hatch version still reads the integration manifest. docs/releasing.md
+covers the required CI-capable token, candidate checks, manual publication and
+rollback. No HA adapter behavior changes. Clean-install/hardware acceptance,
+branding and provenance gaps remain; no tier or first-release validation claimed.
+
+SBR-107 validation: actionlint passes. Offline simulation with release-please
+17.3.0 (the pinned action's bundled version) confirms initial 0.1.0, fix 0.1.1,
+feature/pre-1.0 breaking 0.2.0, post-1.0 breaking 2.0.0, changelog generation,
+JSON manifest updates preserving other fields, unchanged dynamic pyproject.toml,
+and no release for CI-only maintenance. Configuration passes the upstream schema.
+Repository secret inspection returns 403 with the session GitHub App; verify
+RELEASE_PLEASE_TOKEN before activating automation. No release has been created.
