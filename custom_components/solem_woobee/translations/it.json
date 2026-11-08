@@ -40,6 +40,12 @@
       },
       "battery_raw": {
         "name": "Valore grezzo batteria"
+      },
+      "rssi": {
+        "name": "Potenza del segnale"
+      },
+      "last_fetched": {
+        "name": "Ultimo recupero dati"
       }
     },
     "binary_sensor": {

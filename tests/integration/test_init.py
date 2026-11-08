@@ -75,7 +75,7 @@ async def test_fixed_controller_entry_removal(hass, offline):
         registered = dr.async_entries_for_config_entry(devices, entry.entry_id)
         assert len(registered) == 1
         device_id = registered[0].id
-        assert len(er.async_entries_for_config_entry(entities, entry.entry_id)) == 23
+        assert len(er.async_entries_for_config_entry(entities, entry.entry_id)) == 25
         if offline:
             read.side_effect = ConnectivityError()
             await entry.runtime_data.async_refresh()

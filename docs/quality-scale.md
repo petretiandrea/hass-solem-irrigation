@@ -404,3 +404,31 @@ All 34 client tests, Ruff 0.14.3, distribution validation, compileall, diff chec
 and full official hassfest (Core `357cae5`: 1 integration, 0 invalid) pass.
 Discovery still requires supervised WB-4 advertisement evidence; no hardware
 commands were run and no tier is claimed. Remote CI results are not asserted.
+
+## SBR-106 RSSI and polling freshness
+
+Reviewed official Quality Scale rules for entity availability, device classes,
+categories, translations, polling and lifecycle. Two enabled diagnostic sensors
+share the existing coordinator: RSSI uses HA's cached connectable advertisement
+(signal_strength/dBm/measurement), and Last fetched uses an aware UTC timestamp
+set only after a successful full poll. RSSI is unknown without advertisement data.
+Last fetched remains available during outages so stale data can be identified;
+commands preserve both poll metadata fields. No new scan, connection or timer.
+
+`test_entities.py` covers actual HA values, en/it names, categories, enabled
+registry defaults, shared device identity, unknown RSSI, failed-poll timestamp
+retention, recovery and unload. Existing lifecycle tests include both sensors;
+`test_commands.py` checks commands do not advance polling metadata. README
+explains advertisement caching and timestamp semantics. Applicable checklist
+entries are updated. Existing hardware, discovery, provenance, whole-client
+coverage and other TODOs remain; no Quality Scale tier is claimed.
+
+References: https://contributors.home-assistant.io/core/quality-scale/ and
+https://contributors.home-assistant.io/core/integrations/bluetooth/.
+
+SBR-106 validation: Python 3.14.10; all 126 integration tests pass on both
+HA 2026.10.4/plugin 0.13.375 and HA 2026.8.0/plugin 0.13.354. All 14 adapter
+modules have 100% line/branch coverage and pass the >95% per-module gate.
+All 34 client tests, Ruff, distribution checks, compileall and git diff --check
+pass. HA 2026.8.0 emits 78 mocked-Bluetooth pytest-socket warnings. No hardware
+validation was performed; these results do not establish whole-client coverage.

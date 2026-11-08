@@ -4,10 +4,12 @@ from dataclasses import replace
 from datetime import timedelta
 import logging
 
+from homeassistant.components import bluetooth
 from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .connection import async_validate_device, connection_scope
 from .const import DOMAIN
@@ -34,7 +36,15 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
     async def _async_update_data(self) -> WooBeeData:
         try:
             async with self._io_lock:
-                return await async_validate_device(self.hass, self.address)
+                data = await async_validate_device(self.hass, self.address)
+                lookup_address = self.address.upper() if len(self.address) == 17 else self.address
+                service_info = bluetooth.async_last_service_info(
+                    self.hass, lookup_address, connectable=True,
+                )
+                return replace(
+                    data, rssi=service_info.rssi if service_info is not None else None,
+                    last_fetched=dt_util.utcnow(),
+                )
         except AuthenticationError as exc:
             # Fixed protocol key: no credentials a user can replace via reauth.
             # A fresh challenge on the next poll permits recovery without reload.
