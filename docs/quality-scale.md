@@ -619,3 +619,13 @@ The workflow uses built-in GITHUB_TOKEN with contents/pull-requests/issues write
 permissions; generated PR CI requires maintainer approval as documented by GitHub.
 No dedicated token secret is needed. Actionlint passes after this change.
 No release has been created.
+
+## SBR-107 release loop correction
+
+Reviewed the official Quality Scale for this release automation change. No HA
+adapter behavior or rule status changes: installation documentation remains
+applicable. The release workflow now creates drafts before checking for pending
+versioned drafts and only prepares the next PR when none remain. This preserves
+manual publication and avoids replaying history before GitHub creates the tag.
+Existing hardware, branding, provenance and clean-install TODOs remain pending;
+no tier is claimed. HA adapter tests/coverage are unaffected by this CI-only fix.
