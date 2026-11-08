@@ -401,6 +401,14 @@ consistency, compatibility and supervised hardware verification.
 Diagnostics, automated test evidence and the pending WB-4 hardware validation
 procedure are documented in [diagnostics and validation](docs/diagnostics-and-validation.md).
 
+### Bluetooth address changes
+
+Use the entry menu’s **Reconfigure** action to validate a new address for the
+same controller while preserving entity/device identity. A previously recorded
+matching serial is required. See [Bluetooth discovery and address changes](docs/bluetooth-discovery.md)
+for instructions, identity migration details and the pending supervised
+advertisement evidence. Automatic discovery/address updates remain unavailable.
+
 ## License
 
 The integration and embedded client are distributed under the [MIT License](LICENSE).

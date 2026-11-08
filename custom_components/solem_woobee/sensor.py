@@ -53,7 +53,7 @@ class WooBeeBatteryRawSensor(WooBeeEntity, SensorEntity):
 
     def __init__(self, coordinator: WooBeeCoordinator) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{ControllerIdentity(coordinator.address).unique_id}_battery_raw"
+        self._attr_unique_id = f"{ControllerIdentity(coordinator.identity_address).unique_id}_battery_raw"
 
     @property
     def native_value(self) -> int:

@@ -27,7 +27,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: WooBeeConfigEntry) -> bo
     await coordinator.async_config_entry_first_refresh()
     entry.runtime_data = coordinator
     dr.async_get(hass).async_get_or_create(
-        config_entry_id=entry.entry_id, **controller_device_info(coordinator.data)
+        config_entry_id=entry.entry_id, **controller_device_info(coordinator.data, coordinator.identity_address)
     )
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

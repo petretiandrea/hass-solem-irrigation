@@ -8,16 +8,29 @@
         "data": {
           "address": "Bluetooth controller"
         }
+      },
+      "reconfigure": {
+        "title": "Change Bluetooth address",
+        "description": "Enter the new address of the same physical controller. Entity and device identities are preserved. Do not use this flow to replace the controller.",
+        "data": {
+          "address": "Bluetooth address",
+          "same_controller": "I confirm this is the same physical controller"
+        }
       }
     },
     "error": {
       "invalid_auth": "The controller rejected authentication.",
       "cannot_connect": "Unable to connect. Check Bluetooth range and available connections, then retry.",
-      "invalid_response": "The controller returned an unsupported or invalid response."
+      "invalid_response": "The controller returned an unsupported or invalid response.",
+      "invalid_address": "Enter a valid Bluetooth MAC address or CoreBluetooth UUID.",
+      "confirm_controller": "Confirm this is the same physical controller.",
+      "wrong_controller": "The serial number does not match the configured controller.",
+      "identity_unavailable": "The original serial number is unavailable. Restore connectivity at the old address to read it before retrying."
     },
     "abort": {
       "already_configured": "This controller is already configured.",
-      "no_devices_found": "No connectable Bluetooth devices found. Bring the controller within range and retry."
+      "no_devices_found": "No connectable Bluetooth devices found. Bring the controller within range and retry.",
+      "reconfigure_successful": "Bluetooth address updated."
     }
   },
   "entity": {
