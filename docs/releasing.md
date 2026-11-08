@@ -16,8 +16,8 @@ for manual installation; HACS release installation must be verified later.
 
 The directly inspected hass-sorgenia template provides the embedded API layout,
 HA/HACS minimum metadata, separate hassfest/HACS validation and a manifest version.
-This repository deliberately uses a manual release process instead of its
-release-please automation so merging a PR cannot publish the first release.
+Release Please prepares version/changelog PRs and draft GitHub releases.
+Publishing a reviewed draft remains a manual maintainer action.
 
 ## Required checks for a candidate
 
@@ -75,26 +75,72 @@ are pending; simulated tests cannot satisfy the physical checks.
       this post-publication distribution check; first-release HACS testing cannot
       be claimed in advance. If it fails, withdraw the release and investigate.
 
-## Authorized release procedure (future, manual)
+## Versioning policy
 
-1. Complete the pre-publication checklist. In a reviewed release PR, change only
-   the manifest version using SemVer and add release notes describing changes,
-   compatibility and unresolved limits. Merge after all CI gates pass.
-2. From a clean main checkout, verify the exact reviewed SHA and version, then
-   create a GitHub **draft** release with tag `v<manifest version>` targeting that
-   SHA. No additional version file, wheel, PyPI package or ZIP asset is needed.
-   Example for a future explicitly approved 0.1.0 candidate:
-   `gh release create v0.1.0 --target <reviewed-sha> --draft --title v0.1.0 --notes-file <reviewed-notes.md>`.
-3. Review the draft target/tag and notes, obtain first-release authorization,
-   then publish the draft through GitHub Releases. HACS uses that tag's manifest
-   and source tree. Complete and record the fresh HACS install check above.
-4. For rollback, reinstall a previously validated HACS version and restart HA.
-   For the first release, remove the integration if no known-good version exists;
-   preserve HA backups and report failures. Do not replay timed-out commands.
+Release Please reads Conventional Commits and maintains a release PR containing
+`CHANGELOG.md`, the integration manifest and `.release-please-manifest.json`.
+The last file is automation bookkeeping, not a second runtime/package version;
+Hatch continues reading only the integration manifest. Its initial `0.0.0` value
+means no release exists yet. The Python strategy starts the first release at
+0.1.0, matching the prepared integration version. It preserves the dynamic
+version in `pyproject.toml`; no standalone client version is introduced.
 
-No release workflow runs on merge or tag push. Credentials for PyPI are neither
-required nor used. Repository branch protection should require every CI job;
-setting that policy remains a maintainer action outside source configuration.
+Use squash-merge PR titles such as `fix: handle a BLE disconnect` (PATCH),
+`feat: expose a new sensor` (MINOR), and `feat!: change an action schema`
+(breaking change). Include the issue ID after the prefix, for example
+`fix: SBR-123 handle a BLE disconnect`. A `BREAKING CHANGE:` footer also declares
+a breaking change. Before 1.0, breaking changes bump MINOR; after 1.0, MAJOR.
+Documentation, test and CI maintenance alone do not normally trigger a release.
+Historical issue-prefixed commits may be omitted from generated notes; review
+and supplement the initial changelog. Never reuse or move a published tag.
+Stable versions use MAJOR.MINOR.PATCH and tags use `vMAJOR.MINOR.PATCH`.
+
+## Repository setup
+
+The workflow uses the automatically supplied GITHUB_TOKEN with Contents,
+Pull requests and Issues write permissions. No additional token secret or PAT
+is required. Under Settings → Actions → General → Workflow permissions, enable
+**Allow GitHub Actions to create and approve pull requests**. Organization policy
+may restrict this setting. Branch protection should require candidate checks
+and human review; the bot must not bypass it.
+
+When Release Please opens or updates a PR with GITHUB_TOKEN, its pull_request
+CI runs require approval. A maintainer with write access must select
+**Approve workflows to run** in the PR merge box, then wait for all checks.
+Approve again after bot updates if prompted. Bot push/tag/release events do not
+trigger other workflows automatically; release validation uses the approved PR
+checks and the normal main CI after the maintainer merges the release PR.
+See [GitHub workflow triggering rules](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/trigger-a-workflow#triggering-a-workflow-from-a-workflow).
+
+## Authorized release procedure
+
+1. On pushes to main, **Release Please** opens or updates a release PR from the
+   Conventional Commits since the previous release. The workflow can also be
+   rerun manually from main. Review the proposed version and changelog; add
+   migration instructions, compatibility and unresolved limits. Keep the
+   generated release metadata and `autorelease: pending` label intact.
+2. Approve the generated PR workflows using **Approve workflows to run**.
+   Complete the pre-publication checklist and require all candidate CI checks,
+   including HACS, hassfest, typing and both HA test targets, before merging the
+   release PR. This setup PR does not publish a release. Do not merge the first
+   generated release PR until its source-install acceptance evidence is ready.
+3. After the release PR merges, Release Please creates a **draft GitHub release**
+   for that merge commit with the matching version tag and changelog notes.
+   A draft is not offered as an update by HACS. Wait for main CI on the exact
+   candidate SHA to pass; verify tag/target and manifest version, review the notes,
+   and obtain first-release authorization before publishing through GitHub
+   Releases. Complete and record the fresh HACS install check above.
+4. If automation fails, check Actions permissions, PR workflow approval and CI, then rerun
+   **Release Please** on main. Inspect existing release PRs/drafts before any
+   manual recovery; do not delete lifecycle labels or move published tags.
+5. For rollback, reinstall a previously validated HACS version and restart HA.
+   If none exists, remove the integration and preserve HA backups. Withdraw a
+   faulty release if necessary, then ship a fix with a higher version. Never
+   replay timed-out hardware commands.
+
+HACS downloads the tagged component source tree, including `woobee_api/`; no
+wheel or ZIP asset is needed. Publication remains a manual step. First-release
+clean-install, provenance and supervised hardware acceptance remain pending.
 
 ## Repository metadata required by HACS
 
