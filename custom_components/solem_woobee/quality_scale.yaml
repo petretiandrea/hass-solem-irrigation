@@ -19,7 +19,8 @@ rules:
       battery impact remains unmeasured.
   brands:
     status: todo
-    comment: Verify or submit WooBee branding in the Home Assistant brands repository.
+    comment: Local brand assets prepared from HA brands db0aad8; custom 2026.3+ route documented in docs/dependency-provenance.md.
+      Upstream solem_woobee absent; installed HA/candidate HACS verification pending; keep ignore until resolved.
   common-modules:
     status: done
     comment: const.py, data.py and coordinator.py separate constants, entry runtime types and shared refresh
@@ -45,8 +46,9 @@ rules:
     comment: Flow modules have 100% line/branch coverage in integration tests.
   dependency-transparency:
     status: todo
-    comment: Embedded woobee_api is the agreed custom-integration architecture. A Core submission requires
-      reviewing library packaging, license and public release provenance; no exemption claimed.
+    comment: docs/dependency-provenance.md audits HA-provided Bleak/cryptography licenses, tags and public builds.
+      Project MIT exists; MySOLEM derivation evidence and embedded release provenance remain incomplete.
+      Custom distribution is intentional, not an exemption; separate Core migration proposal recorded.
   docs-high-level-description:
     status: done
     comment: README.md documents verified WB-4 scope, HACS/manual installation, configuration and removal; docs/releasing.md records pending clean-install acceptance.
