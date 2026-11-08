@@ -190,13 +190,18 @@ rules:
     comment: One fixed WB-4 device per entry; zones are entities, not removable child devices. Official single-device exemption applies. test_fixed_controller_entry_removal verifies online/offline entry removal cleans registry and polling.
   async-dependency:
     status: done
-    comment: Reconfirmed in SBR-103; BLETransport and SolemSession await BLE I/O with bounded
+    comment: SBR-109 uses HA-provided bleak-retry-connector for establishment with refreshed
+      device selection, without the standalone ten-second connect deadline. test_connection.py
+      covers ownership, cancellation, failed establishment, authentication cleanup and recovery.
+      BLETransport and SolemSession await BLE I/O with bounded
       operations, serialized transactions and cleanup. tests/test_session.py covers ownership,
       cancellation and no replay.
   inject-websession:
     status: exempt
-    comment: Reconfirmed in SBR-103; connection.py injects an HA-resolved BleakClient into
-      WooBeeConnection. The embedded client uses BLE only, with no HTTP client or web session.
+    comment: SBR-109 connection.py injects an HA-resolved, connector-established client into
+      SolemSession, which authenticates and disconnects without connecting a second time.
+      The connector is provided by the bluetooth dependency, avoiding conflicting HA version pins.
+      The embedded client uses BLE only, with no HTTP client or web session.
   strict-typing:
     status: done
     comment: Custom-repository evidence in docs/quality-scale.md; pinned strict mypy

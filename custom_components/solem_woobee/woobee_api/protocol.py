@@ -94,12 +94,17 @@ class SolemSession:
 
     After any interrupted exchange close and reconnect: V6 has no transaction ID
     with which to distinguish a late reply. No commands are retried.
+
+    ``already_connected`` skips establishment for connector-provided clients;
+    ``owns_connection`` still controls whether cleanup disconnects that client.
     """
 
-    def __init__(self, client: BLETransport, gatt: SolemGatt, *, owns_connection: bool = False) -> None:
+    def __init__(self, client: BLETransport, gatt: SolemGatt, *, owns_connection: bool = False,
+                 already_connected: bool = False) -> None:
         self._client = client
         self._gatt = gatt
         self._owns_connection = owns_connection
+        self._already_connected = already_connected
         self._notifications: asyncio.Queue[bytes] = asyncio.Queue(maxsize=128)
         self._authenticated: asyncio.Future[None] | None = None
         self._nonce: bytes | None = None
@@ -126,7 +131,7 @@ class SolemSession:
 
     async def __aenter__(self) -> SolemSession:
         try:
-            if self._owns_connection:
+            if self._owns_connection and not self._already_connected:
                 async with asyncio.timeout(10):
                     await self._client.connect()
             await self.authenticate()

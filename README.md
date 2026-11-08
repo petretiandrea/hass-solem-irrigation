@@ -58,6 +58,11 @@ time. Missing optional durations remain unknown on available entities. RSSI may
 predate the poll or be unknown if HA has no cached advertisement. Commands do
 not advance Last fetched.
 
+Each session uses Home Assistant's Bluetooth device selection and
+`bleak-retry-connector` to retry transient connection establishment failures.
+Authentication and requests follow only after connection succeeds. Irrigation
+commands are sent once; a failed or interrupted command is never replayed.
+
 ## Irrigation
 
 Opening a zone uses its saved default duration, initially one minute.
