@@ -92,7 +92,7 @@ rules:
   entity-unavailable:
     status: done
     comment: Real HA state tests cover unknown partial durations, reported zero, unavailable state on
-      read failure and recovery. Connectivity remains available to report the last read outcome.
+      read failure and recovery. Connectivity remains available to report the last read outcome; Last fetched retains successful-poll time during outages (SBR-106).
   integration-owner:
     status: done
     comment: manifest.json codeowners names petretiandrea.
@@ -154,11 +154,11 @@ rules:
     comment: One fixed four-zone WB-4 per config entry; no dynamically added child hardware.
   entity-category:
     status: done
-    comment: Connectivity, clock/input flags, valve faults and raw battery are diagnostic. Operational
+    comment: RSSI and last-fetched timestamp (SBR-106), connectivity, clock/input flags, valve faults and raw battery are diagnostic. Operational
       status remains uncategorized; zone valves and global stop are operational; duration defaults are local HA options.
   entity-device-class:
     status: done
-    comment: Water valves, duration in seconds, running activity, problem flags and read connectivity tested. Unscaled
+    comment: RSSI uses signal_strength/dBm/measurement and last_fetched uses timestamp (SBR-106). Water valves, duration in seconds, running activity, problem flags and read connectivity tested. Unscaled
       battery has no fabricated class, unit or statistics.
   entity-disabled-by-default:
     status: done

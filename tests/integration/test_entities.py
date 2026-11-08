@@ -2,6 +2,7 @@
 from dataclasses import replace
 from datetime import timedelta
 from unittest.mock import patch
+from types import SimpleNamespace
 
 import pytest
 from homeassistant.const import CONF_ADDRESS, STATE_UNAVAILABLE, STATE_UNKNOWN
@@ -59,11 +60,11 @@ async def test_mapping_and_metadata(hass, language, expected_name):
             assert state(hass, "binary_sensor", f"zone_{zone}_valve_fault").state == ("on" if zone in (2, 4) else "off")
         registry = er.async_get(hass)
         entities = er.async_entries_for_config_entry(registry, entry.entry_id)
-        assert len(entities) == 23
+        assert len(entities) == 25
         device, = dr.async_entries_for_config_entry(dr.async_get(hass), entry.entry_id)
         assert device.identifiers == {(DOMAIN, ADDRESS)}
         assert {item.device_id for item in entities} == {device.id}
-        assert len({item.unique_id for item in entities}) == 23
+        assert len({item.unique_id for item in entities}) == 25
         for item in entities:
             assert item.has_entity_name
             assert item.translation_key
@@ -154,3 +155,50 @@ async def test_corebluetooth_identity_and_controller_namespaces(hass):
         assert device.identifiers == {(DOMAIN, uuid.lower())}
         assert await hass.config_entries.async_unload(first.entry_id)
         assert await hass.config_entries.async_unload(second.entry_id)
+
+
+@pytest.mark.parametrize("language, rssi_name, fetched_name", [
+    ("en", "Garden Signal strength", "Garden Last fetched"),
+    ("it", "Garden Potenza del segnale", "Garden Ultimo recupero dati"),
+])
+async def test_poll_diagnostics(hass, freezer, language, rssi_name, fetched_name):
+    """Cached RSSI and successful-poll time share the existing read lifecycle."""
+    await hass.config.async_update(language=language)
+    with patch("custom_components.solem_woobee.coordinator.async_validate_device", return_value=snapshot()) as read, patch(
+        "custom_components.solem_woobee.coordinator.bluetooth.async_last_service_info",
+        return_value=SimpleNamespace(rssi=-67),
+    ) as advertisement:
+        entry = await setup(hass)
+        initial = dt_util.utcnow().replace(microsecond=0)
+        rssi = state(hass, "sensor", "rssi")
+        fetched = state(hass, "sensor", "last_fetched")
+        assert rssi.state == "-67"
+        assert rssi.attributes["device_class"] == "signal_strength"
+        assert rssi.attributes["unit_of_measurement"] == "dBm"
+        assert rssi.attributes["state_class"] == "measurement"
+        assert rssi.attributes["friendly_name"] == rssi_name
+        assert fetched.state == initial.isoformat()
+        assert fetched.attributes["device_class"] == "timestamp"
+        assert fetched.attributes["friendly_name"] == fetched_name
+        assert "state_class" not in fetched.attributes
+        for key in ("rssi", "last_fetched"):
+            item = entity(hass, "sensor", key)
+            assert item.entity_category.value == "diagnostic"
+            assert item.disabled_by is None
+        advertisement.assert_called_once_with(hass, ADDRESS.upper(), connectable=True)
+        freezer.tick(timedelta(minutes=1))
+        read.side_effect = ConnectivityError()
+        await entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+        assert state(hass, "sensor", "rssi").state == STATE_UNAVAILABLE
+        assert state(hass, "sensor", "last_fetched").state == initial.isoformat()
+        assert advertisement.call_count == 1
+        read.side_effect = None
+        advertisement.return_value = None
+        freezer.tick(timedelta(minutes=1))
+        await entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+        assert state(hass, "sensor", "rssi").state == STATE_UNKNOWN
+        assert state(hass, "sensor", "last_fetched").state == dt_util.utcnow().replace(microsecond=0).isoformat()
+        assert read.await_count == 3
+        assert await hass.config_entries.async_unload(entry.entry_id)

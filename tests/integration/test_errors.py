@@ -75,7 +75,9 @@ async def test_expired_session_reconnects_on_next_poll(hass):
         assert connect.call_count == 1
         await coordinator.async_refresh()
         assert coordinator.last_update_success
-        assert coordinator.data == snapshot()
+        assert coordinator.data.state == snapshot().state
+        assert coordinator.data.device_info == snapshot().device_info
+        assert coordinator.data.last_fetched is not None
         assert connect.call_count == 2
         fresh.__aexit__.assert_awaited_once()
     await coordinator.async_shutdown()

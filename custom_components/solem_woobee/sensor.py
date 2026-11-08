@@ -1,6 +1,8 @@
 """Read-only values from the shared WB-4 snapshot."""
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription
-from homeassistant.const import EntityCategory, UnitOfTime
+from datetime import datetime
+
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorEntityDescription, SensorStateClass
+from homeassistant.const import EntityCategory, UnitOfTime, SIGNAL_STRENGTH_DECIBELS_MILLIWATT
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
@@ -20,6 +22,17 @@ BATTERY_RAW = SensorEntityDescription(
     entity_category=EntityCategory.DIAGNOSTIC, entity_registry_enabled_default=False,
 )
 
+RSSI = SensorEntityDescription(
+    key="rssi", translation_key="rssi", entity_category=EntityCategory.DIAGNOSTIC,
+    device_class=SensorDeviceClass.SIGNAL_STRENGTH,
+    native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+    state_class=SensorStateClass.MEASUREMENT,
+)
+LAST_FETCHED = SensorEntityDescription(
+    key="last_fetched", translation_key="last_fetched",
+    entity_category=EntityCategory.DIAGNOSTIC, device_class=SensorDeviceClass.TIMESTAMP,
+)
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: WooBeeConfigEntry, async_add_entities: AddEntitiesCallback,
@@ -27,6 +40,8 @@ async def async_setup_entry(
     """Subscribe entities to one coordinator; never perform per-entity BLE reads."""
     async_add_entities([
         WooBeeBatteryRawSensor(entry.runtime_data),
+        WooBeeRssiSensor(entry.runtime_data),
+        WooBeeLastFetchedSensor(entry.runtime_data),
         *(WooBeeRemainingSensor(entry.runtime_data, zone) for zone in range(1, 5)),
     ])
 
@@ -58,3 +73,36 @@ class WooBeeBatteryRawSensor(WooBeeEntity, SensorEntity):
     @property
     def native_value(self) -> int:
         return self.coordinator.data.state.status.battery_raw
+
+
+class WooBeeRssiSensor(WooBeeEntity, SensorEntity):
+    """Latest connectable Bluetooth advertisement RSSI, sampled at poll time."""
+
+    entity_description = RSSI
+
+    def __init__(self, coordinator: WooBeeCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{ControllerIdentity(coordinator.identity_address).unique_id}_rssi"
+
+    @property
+    def native_value(self) -> int | None:
+        return self.coordinator.data.rssi
+
+
+class WooBeeLastFetchedSensor(WooBeeEntity, SensorEntity):
+    """Completion time of the most recent successful full poll."""
+
+    entity_description = LAST_FETCHED
+
+    def __init__(self, coordinator: WooBeeCoordinator) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{ControllerIdentity(coordinator.identity_address).unique_id}_last_fetched"
+
+    @property
+    def available(self) -> bool:
+        # Retain freshness evidence during outages, like the connectivity entity.
+        return self.coordinator.data is not None
+
+    @property
+    def native_value(self) -> datetime | None:
+        return self.coordinator.data.last_fetched

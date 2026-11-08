@@ -15,7 +15,11 @@ failures. No irrigation command is replayed.
 
 A failed snapshot leaves the last successful data available internally, but
 CoordinatorEntity marks state entities unavailable until recovery. The diagnostic
-connectivity binary sensor remains available and reports the last read outcome. A missing
+connectivity binary sensor remains available and reports the last read outcome.
+The Last fetched timestamp also remains available, retaining the completion time
+of the last successful full poll. RSSI samples HA’s cached connectable Bluetooth
+advertisement after each successful poll; absent cache data remains unknown.
+Command-only state reads do not advance the timestamp or resample RSSI. A missing
 mandatory status page, valve response or input-alert group fails the whole
 snapshot. Optional identity fields remain None; missing zone duration pages
 produce a None duration on an available zone, without treating unknown as zero.

@@ -40,6 +40,12 @@
       },
       "battery_raw": {
         "name": "Battery raw value"
+      },
+      "rssi": {
+        "name": "Signal strength"
+      },
+      "last_fetched": {
+        "name": "Last fetched"
       }
     },
     "binary_sensor": {

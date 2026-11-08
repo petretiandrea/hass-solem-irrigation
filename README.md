@@ -298,17 +298,27 @@ does not replace registry entries.
 | Sensor input open | Raw open flag; does not infer rain or soil moisture | Diagnostic |
 | Clock alarm | Reported clock alarm flag | Problem, diagnostic |
 | Last read successful | Success of the shared snapshot read | Connectivity, diagnostic |
+| Signal strength | Latest connectable advertisement RSSI cached by HA, sampled after a successful poll | Diagnostic, signal strength, dBm, measurement |
+| Last fetched | UTC completion time of the last successful full poll | Diagnostic, timestamp; remains visible during outages |
 | Battery raw value | Unscaled battery byte | Diagnostic, disabled by default, no unit/device/state class |
 
 Connectivity describes the **last read**, not an always-connected BLE link; the
 client disconnects after every read. On a failed update it turns off, while all
-other enabled entities become unavailable until recovery. Missing optional
+other enabled entities except Last fetched become unavailable until recovery. Missing optional
 zone durations remain available with an unknown value. Values update at the
 five-minute polling interval; countdowns are not extrapolated between reads.
 
+Signal strength and Last fetched are enabled by default. RSSI comes from Home
+Assistant Bluetooth advertisements (including proxy data), not a connected-device
+RSSI read; the cached advertisement may predate the poll. Missing advertisement
+data is unknown. No additional scans or BLE connections are requested. Last
+fetched advances only after a successful full poll (including setup), never on
+failed polls or command-only state reads. It is not the controller clock or an
+advertisement timestamp and is not restored across reloads.
+
 Enable the raw battery entity from the device's entity settings only if useful
 for investigation. Its scale is unverified: it must not be interpreted as a
-percentage or voltage. RSSI, rain-delay units, active-program labels and input
+percentage or voltage. Rain-delay units, active-program labels and input
 alert meanings are not exposed because the shared client provides no verified
 measurement/interpretation for them. No configuration entities or additional
 platforms are justified by these read-only fields.
