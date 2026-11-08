@@ -599,3 +599,13 @@ wheel/sdist typed-marker/module verification and git diff --check pass.
 These combined results supersede the earlier SBR-103 counts and coverage-gap
 statement; SBR-99's gate is retained. No hardware commands, release or official
 tier claim. Remaining checklist TODOs and physical-evidence limits still apply.
+
+## SBR-107 release strategy
+
+Reviewed the official Quality Scale and release guidance. The affected
+docs-installation-instructions rule is supported by docs/releasing.md and the
+manually dispatched release.yml workflow: one manifest version, matching release
+tag, exact-candidate CI gates and draft review before publication. HACS consumes
+the tagged source tree. No HA adapter behavior changes. Clean-install/hardware
+acceptance, branding and provenance gaps remain as recorded above; no tier or
+first-release validation is claimed.

@@ -16,8 +16,8 @@ for manual installation; HACS release installation must be verified later.
 
 The directly inspected hass-sorgenia template provides the embedded API layout,
 HA/HACS minimum metadata, separate hassfest/HACS validation and a manifest version.
-This repository deliberately uses a manual release process instead of its
-release-please automation so merging a PR cannot publish the first release.
+This repository uses the manually dispatched **Prepare release** workflow instead
+of release-please automation. Merging a PR never publishes a release.
 
 ## Required checks for a candidate
 
@@ -75,26 +75,49 @@ are pending; simulated tests cannot satisfy the physical checks.
       this post-publication distribution check; first-release HACS testing cannot
       be claimed in advance. If it fails, withdraw the release and investigate.
 
-## Authorized release procedure (future, manual)
+## Versioning policy
 
-1. Complete the pre-publication checklist. In a reviewed release PR, change only
-   the manifest version using SemVer and add release notes describing changes,
-   compatibility and unresolved limits. Merge after all CI gates pass.
-2. From a clean main checkout, verify the exact reviewed SHA and version, then
-   create a GitHub **draft** release with tag `v<manifest version>` targeting that
-   SHA. No additional version file, wheel, PyPI package or ZIP asset is needed.
-   Example for a future explicitly approved 0.1.0 candidate:
-   `gh release create v0.1.0 --target <reviewed-sha> --draft --title v0.1.0 --notes-file <reviewed-notes.md>`.
-3. Review the draft target/tag and notes, obtain first-release authorization,
-   then publish the draft through GitHub Releases. HACS uses that tag's manifest
-   and source tree. Complete and record the fresh HACS install check above.
-4. For rollback, reinstall a previously validated HACS version and restart HA.
+Use stable Semantic Versioning: MAJOR.MINOR.PATCH, with no leading zeroes.
+Increment PATCH for compatible fixes, MINOR for compatible features, and MAJOR
+for incompatible changes. During 0.x development, MINOR may contain breaking
+changes; explain migration steps at the top of the release notes. Never reuse
+or move a published tag. The manifest contains `0.1.0`; its tag is `v0.1.0`.
+Prerelease suffixes are not supported by this workflow.
+
+## Authorized release procedure
+
+1. Complete the pre-publication checklist. In a reviewed release PR, update the
+   manifest version (the initial candidate is already 0.1.0) and document changes,
+   compatibility, migration steps and unresolved limits. Merge after CI passes.
+2. Copy the full 40-character reviewed commit SHA from main. In GitHub Actions,
+   run **Prepare release** from **main**, providing that SHA. CLI equivalent:
+   `gh workflow run release.yml --ref main -f commit=<reviewed-sha>`.
+   The workflow checks main ancestry, requires the latest main push runs of both
+   **Lint and tests** and **HACS validation** to have succeeded for that exact SHA,
+   validates the source distribution and version, and rejects existing tags or
+   releases. It creates a **draft** named `v<manifest version>` with generated notes
+   targeting that SHA. There is no wheel, PyPI upload or ZIP asset.
+3. Review the draft target and generated notes. Edit the notes to put migration
+   steps, compatibility and known limitations first. Obtain first-release
+   authorization after the source-install report is accepted, then publish the
+   draft through GitHub Releases. GitHub creates the version tag at the selected
+   SHA when the draft is published. HACS discovers the published release and
+   downloads its tagged source tree. Complete the fresh HACS install check above.
+4. A failed CI check must be fixed and rerun for the same candidate, or a new
+   reviewed SHA selected. If draft creation succeeded but the workflow was
+   interrupted, review the existing draft rather than rerunning it. Delete an
+   unpublished incorrect draft before preparing again; never move a published tag.
+5. For rollback, reinstall a previously validated HACS version and restart HA.
    For the first release, remove the integration if no known-good version exists;
-   preserve HA backups and report failures. Do not replay timed-out commands.
+   preserve HA backups and report failures. Withdraw a faulty release if needed,
+   then ship a fix with a higher version. Do not replay timed-out commands.
 
-No release workflow runs on merge or tag push. Credentials for PyPI are neither
-required nor used. Repository branch protection should require every CI job;
-setting that policy remains a maintainer action outside source configuration.
+No release workflow runs on merge or tag push. The workflow uses the repository
+GitHub token with contents-write and actions-read permissions; no PAT is needed.
+Repository branch protection should require every CI job; setting that policy
+remains a maintainer action outside source configuration.
+
+Reference: [HACS release guidance](https://contributors.home-assistant.io/marketplace/guides/releases/).
 
 ## Repository metadata required by HACS
 
