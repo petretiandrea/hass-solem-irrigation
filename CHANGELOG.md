@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.1](https://github.com/petretiandrea/hass-solem-irrigation/compare/v0.2.0...v0.2.1) (2026-11-08)
+
+
+### Bug Fixes
+
+* SBR-109 establish HA Bluetooth connections with retry connector ([#21](https://github.com/petretiandrea/hass-solem-irrigation/issues/21)) ([4133855](https://github.com/petretiandrea/hass-solem-irrigation/commit/4133855c2fec0c698c91a780edce9a809356accc))
+
+
+### Documentation
+
+* SBR-108 simplify documentation and redact device capture ([#19](https://github.com/petretiandrea/hass-solem-irrigation/issues/19)) ([9a4cc51](https://github.com/petretiandrea/hass-solem-irrigation/commit/9a4cc5156cd058d4259e590aeb1ed3aa4eedd6a1))
+
 ## [0.2.0](https://github.com/petretiandrea/hass-solem-irrigation/compare/v0.1.0...v0.2.0) (2026-11-08)
 
 
