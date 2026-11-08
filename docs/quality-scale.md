@@ -331,3 +331,65 @@ and coverage scope are unchanged. Integration-only overall coverage remains
 Full official hassfest from Core tag 2026.10.4 (`357cae5`), with its required
 Ruff 0.16.9 tooling, also passes locally: 1 integration, 0 invalid integrations.
 Local validation does not assert remote CI success.
+
+## SBR-102 translated errors and lifecycle review
+
+Reviewed separately on 2026-11-07:
+- [exception-translations](https://contributors.home-assistant.io/core/quality-scale/exception-translations/):
+  coordinator poll/action errors and duration validation now use domain/key
+  metadata. strings.json and en/it contain matching exception keys and numeric
+  limit placeholders. Client text is not inserted into translations; original
+  ValueError/transport causes remain chained unchanged. Diagnostics allowlisting,
+  command locking, guarded close and no-retry behavior are preserved.
+- [repair-issues](https://contributors.home-assistant.io/core/quality-scale/repair-issues/):
+  exempt for the currently supported surface. There is no user account, renewable
+  credential, known minimum firmware requirement, deprecated configuration or
+  migration needing user confirmation. Reachability, authentication and malformed
+  responses cannot establish a specific required user repair; fresh sessions
+  already permit recovery. Valve fault bits are exposed as diagnostic entities,
+  but the protocol evidence does not establish a safe user repair/reset procedure.
+  Raw battery has no verified low-battery threshold. Do not invent firmware,
+  battery or fault repairs from these signals. Revisit if a verified actionable
+  condition becomes supported. Creation/resolution tests are inapplicable because
+  no repair is created; lifecycle tests assert no issues during outage/recovery.
+- [stale-devices](https://contributors.home-assistant.io/core/quality-scale/stale-devices/):
+  the official single fixed device per config entry exemption applies. WB-4's
+  four zones are fixed entities on that controller, not independently removable
+  hardware. BLE silence is not proof of removal. Keep the controller during an
+  outage; the user removes the integration entry to remove it and all associated
+  entities. No device-removal hook or automatic pruning is appropriate.
+
+`test_translated_validation_and_action_errors` resolves HA exception translations
+in English and Italian, checks placeholders and error metadata, preserves original
+validation/transport causes and prevents writes on invalid/busy requests.
+`test_fixed_controller_entry_removal` covers online/offline removal, recovery,
+registry cleanup and polling shutdown. Existing command/error/entity tests retain
+serialization, cancellation, unload and fresh-session recovery coverage.
+
+No hardware commands are run. No official tier is claimed: branding, dependency
+provenance, whole-client coverage, verified discovery/reconfiguration and strict
+typing remain independent TODOs. Historical validation counts above describe
+previous changes, not this PR.
+
+SBR-102 validation: Python 3.14.10; 104 integration tests pass on each existing
+matrix target, HA 2026.10.4/plugin 0.13.375 and HA 2026.8.0/plugin 0.13.354.
+All 14 adapter modules have 100% line/branch coverage on both targets and satisfy
+the unchanged >95% per-module gate. The older target emits 56 mocked-Bluetooth
+pytest-socket warnings without failures. All 34 standalone simulated client tests,
+Ruff 0.14.3, distribution metadata check, compileall and git diff --check pass.
+The integration-only run still reports 54% overall including the embedded client;
+this does not close SBR-99. Official hassfest/HACS remain enabled in unchanged CI;
+local checks here do not claim their remote results or hardware evidence.
+
+### SBR-101 merge validation (2026-11-08)
+
+Merged main `9ef98a6` (SBR-102), preserving its translated errors and lifecycle
+exemptions alongside the SBR-101 reconfiguration evidence and discovery TODOs.
+The combined branch passes 123 integration tests on each existing HA target
+(2026.8.0/plugin 0.13.354 and 2026.10.4/plugin 0.13.375), with 100% line/branch
+coverage in every one of the 14 adapter modules and the >95% gate passing on
+both. The older target reports 75 mocked-Bluetooth pytest-socket warnings.
+All 34 client tests, Ruff 0.14.3, distribution validation, compileall, diff checks
+and full official hassfest (Core `357cae5`: 1 integration, 0 invalid) pass.
+Discovery still requires supervised WB-4 advertisement evidence; no hardware
+commands were run and no tier is claimed. Remote CI results are not asserted.

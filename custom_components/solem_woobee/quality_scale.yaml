@@ -173,20 +173,17 @@ rules:
     comment: icons.json supplies icons by translation key for enabled/manual/input flags and raw battery.
       Duration, running, problem and connectivity retain HA device-class icons; no Python icon overrides.
   exception-translations:
-    status: todo
-    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
-      flows before claiming Gold.
+    status: done
+    comment: Coordinator and duration validation use exceptions keys in strings/en/it with safe limit placeholders; test_errors.py checks HA translations and original causes.
   reconfiguration-flow:
     status: done
     comment: SBR-101 adds async_step_reconfigure with authenticated snapshot/known-serial validation, confirmation, collision recheck and update/reload. test_reconfigure.py covers errors/retry/cancel, serial absence/mismatch, repeated address changes preserving all 23 entity records/device/options and unload. Missing original serial fails closed; see docs/bluetooth-discovery.md.
   repair-issues:
-    status: todo
-    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
-      flows before claiming Gold.
+    status: exempt
+    comment: No supported user credential, firmware requirement or configuration migration to repair. BLE/session failures recover on fresh reads; valve faults have no verified software remedy and battery scale is unknown. See SBR-102 review in docs/quality-scale.md.
   stale-devices:
-    status: todo
-    comment: Review translated failures, address reconfiguration and applicable repair/device cleanup
-      flows before claiming Gold.
+    status: exempt
+    comment: One fixed WB-4 device per entry; zones are entities, not removable child devices. Official single-device exemption applies. test_fixed_controller_entry_removal verifies online/offline entry removal cleans registry and polling.
   async-dependency:
     status: done
     comment: Embedded client uses asynchronous BLE transport, bounded operations and session cleanup;
