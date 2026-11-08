@@ -8,10 +8,10 @@ from .data import WooBeeData
 from .woobee_api import ControllerIdentity
 
 
-def controller_device_info(data: WooBeeData) -> DeviceInfo:
+def controller_device_info(data: WooBeeData, identity_address: str | None = None) -> DeviceInfo:
     """Use configured BLE identity even when optional identity pages are absent."""
     return DeviceInfo(
-        identifiers={(DOMAIN, ControllerIdentity(data.address).unique_id)},
+        identifiers={(DOMAIN, ControllerIdentity(identity_address or data.address).unique_id)},
         manufacturer="SOLEM",
         model="WooBee WB-4",
         name=data.device_info.name or "SOLEM WooBee",
@@ -28,7 +28,7 @@ class WooBeeEntity(CoordinatorEntity[WooBeeCoordinator]):
 
     @property
     def device_info(self) -> DeviceInfo:
-        return controller_device_info(self.coordinator.data)
+        return controller_device_info(self.coordinator.data, self.coordinator.identity_address)
 
 
 class WooBeeZoneEntity(WooBeeEntity):
@@ -36,7 +36,7 @@ class WooBeeZoneEntity(WooBeeEntity):
 
     def __init__(self, coordinator: WooBeeCoordinator, zone: int) -> None:
         super().__init__(coordinator)
-        identity = ControllerIdentity(coordinator.address)
+        identity = ControllerIdentity(coordinator.identity_address)
         if type(zone) is not int or not 1 <= zone <= 4:
             raise ValueError("zone must be an integer from 1 to 4")
         self.zone = zone

@@ -8,16 +8,29 @@
         "data": {
           "address": "Controller Bluetooth"
         }
+      },
+      "reconfigure": {
+        "title": "Modifica indirizzo Bluetooth",
+        "description": "Inserisci il nuovo indirizzo dello stesso controller fisico. Gli identificativi delle entità e del dispositivo rimangono invariati. Non usare questo flusso per sostituire il controller.",
+        "data": {
+          "address": "Indirizzo Bluetooth",
+          "same_controller": "Confermo che è lo stesso controller fisico"
+        }
       }
     },
     "error": {
       "invalid_auth": "Il controller ha rifiutato l’autenticazione.",
       "cannot_connect": "Connessione non riuscita. Verifica la portata Bluetooth e le connessioni disponibili, poi riprova.",
-      "invalid_response": "Il controller ha restituito una risposta non supportata o non valida."
+      "invalid_response": "Il controller ha restituito una risposta non supportata o non valida.",
+      "invalid_address": "Inserisci un indirizzo MAC Bluetooth o UUID CoreBluetooth valido.",
+      "confirm_controller": "Conferma che è lo stesso controller fisico.",
+      "wrong_controller": "Il numero di serie non corrisponde al controller configurato.",
+      "identity_unavailable": "Il numero di serie originale non è disponibile. Ripristina la connessione al vecchio indirizzo per leggerlo prima di riprovare."
     },
     "abort": {
       "already_configured": "Questo controller è già configurato.",
-      "no_devices_found": "Nessun dispositivo Bluetooth collegabile trovato. Avvicina il controller e riprova."
+      "no_devices_found": "Nessun dispositivo Bluetooth collegabile trovato. Avvicina il controller e riprova.",
+      "reconfigure_successful": "Indirizzo Bluetooth aggiornato."
     }
   },
   "entity": {
@@ -27,6 +40,12 @@
       },
       "battery_raw": {
         "name": "Valore grezzo batteria"
+      },
+      "rssi": {
+        "name": "Potenza del segnale"
+      },
+      "last_fetched": {
+        "name": "Ultimo recupero dati"
       }
     },
     "binary_sensor": {
@@ -83,6 +102,32 @@
           "description": "Durata intera in minuti (1–279620)."
         }
       }
+    }
+  },
+  "exceptions": {
+    "authentication_failed": {
+      "message": "Autenticazione del programmatore non riuscita; il prossimo aggiornamento apre una nuova sessione."
+    },
+    "snapshot_failed": {
+      "message": "Impossibile leggere lo stato del programmatore; controllare la raggiungibilità Bluetooth e i dati ricevuti."
+    },
+    "invalid_irrigation": {
+      "message": "La zona deve essere un intero da 1 a 4 e la durata un numero intero da 1 a {max_minutes} minuti."
+    },
+    "invalid_minutes": {
+      "message": "La durata deve essere un numero intero da 1 a {max_minutes} minuti."
+    },
+    "irrigation_active": {
+      "message": "Irrigazione già attiva. Arrestare tutte le irrigazioni prima di avviare una zona."
+    },
+    "state_unconfirmed": {
+      "message": "Il programmatore non ha confermato lo stato di irrigazione richiesto. Il comando potrebbe essere stato rifiutato o essere ancora in corso; controllare il dispositivo prima di inviare un altro comando."
+    },
+    "command_failed": {
+      "message": "Impossibile confermare il comando di irrigazione. Controllare il Bluetooth e lo stato del programmatore prima di riprovare; il comando non è stato ripetuto."
+    },
+    "command_cancelled": {
+      "message": "Comando di irrigazione annullato; esito sconosciuto. Controllare lo stato del programmatore prima di inviare un altro comando."
     }
   }
 }

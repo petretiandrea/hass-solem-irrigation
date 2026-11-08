@@ -4,14 +4,17 @@ from dataclasses import replace
 from datetime import timedelta
 import logging
 
+from homeassistant.components import bluetooth
 from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.util import dt as dt_util
 
 from .connection import async_validate_device, connection_scope
 from .const import DOMAIN
 from .data import WooBeeConfigEntry, WooBeeData
+from .services import MAX_MINUTES
 from .woobee_api import AuthenticationError, ConnectivityError, InvalidResponseError
 from .woobee_api.protocol import WooBeeV2
 
@@ -26,21 +29,31 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
         super().__init__(hass, _LOGGER, name=DOMAIN, config_entry=entry,
                          update_interval=POLL_INTERVAL)
         self.address = entry.data[CONF_ADDRESS]
+        # Freeze legacy address-derived registry IDs across transport changes.
+        self.identity_address = entry.data.get("identity_address", self.address)
         self._io_lock = Lock()
 
     async def _async_update_data(self) -> WooBeeData:
         try:
             async with self._io_lock:
-                return await async_validate_device(self.hass, self.address)
+                data = await async_validate_device(self.hass, self.address)
+                lookup_address = self.address.upper() if len(self.address) == 17 else self.address
+                service_info = bluetooth.async_last_service_info(
+                    self.hass, lookup_address, connectable=True,
+                )
+                return replace(
+                    data, rssi=service_info.rssi if service_info is not None else None,
+                    last_fetched=dt_util.utcnow(),
+                )
         except AuthenticationError as exc:
             # Fixed protocol key: no credentials a user can replace via reauth.
             # A fresh challenge on the next poll permits recovery without reload.
             raise UpdateFailed(
-                "Controller authentication failed; next poll opens a fresh session"
+                translation_domain=DOMAIN, translation_key="authentication_failed"
             ) from exc
         except (ConnectivityError, InvalidResponseError, TimeoutError) as exc:
             raise UpdateFailed(
-                "Unable to read controller snapshot; check Bluetooth reachability and response data"
+                translation_domain=DOMAIN, translation_key="snapshot_failed"
             ) from exc
 
     async def async_irrigate(
@@ -56,7 +69,10 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
             try:
                 WooBeeV2.start_valve_frame(zone, minutes)
             except ValueError as exc:
-                raise ServiceValidationError(str(exc)) from exc
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN, translation_key="invalid_irrigation",
+                    translation_placeholders={"max_minutes": str(MAX_MINUTES)},
+                ) from exc
         async with self._io_lock:
             try:
                 async with connection_scope(self.hass, self.address) as client:
@@ -68,7 +84,7 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
                                 return
                         elif before.status.active_zone is not None:
                             raise ServiceValidationError(
-                                "Irrigation is already active. Stop all irrigation before starting a zone."
+                                translation_domain=DOMAIN, translation_key="irrigation_active"
                             )
                     if zone is None or close_zone:
                         await client.stop()
@@ -80,17 +96,14 @@ class WooBeeCoordinator(DataUpdateCoordinator[WooBeeData]):
                     expected_zone = None if close_zone else zone
                     if after.status.active_zone != expected_zone:
                         raise HomeAssistantError(
-                            "The controller did not confirm the requested irrigation state. "
-                            "The command may have been rejected or may still be taking effect; "
-                            "check the device before sending another command."
+                            translation_domain=DOMAIN, translation_key="state_unconfirmed"
                         )
             except (AuthenticationError, ConnectivityError, InvalidResponseError, TimeoutError) as exc:
-                self.async_set_update_error(UpdateFailed("Irrigation command outcome is unknown"))
+                self.async_set_update_error(UpdateFailed(translation_domain=DOMAIN, translation_key="command_failed"))
                 raise HomeAssistantError(
-                    "Unable to confirm irrigation command. Check Bluetooth and controller state "
-                    "before retrying; the command has not been repeated."
+                    translation_domain=DOMAIN, translation_key="command_failed"
                 ) from exc
             except CancelledError:
                 # Cancellation can happen after the controller received a start.
-                self.async_set_update_error(UpdateFailed("Irrigation command cancelled; outcome unknown"))
+                self.async_set_update_error(UpdateFailed(translation_domain=DOMAIN, translation_key="command_cancelled"))
                 raise

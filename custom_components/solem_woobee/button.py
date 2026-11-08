@@ -24,7 +24,7 @@ class WooBeeStopButton(WooBeeEntity, ButtonEntity):
 
     def __init__(self, coordinator: WooBeeCoordinator) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{ControllerIdentity(coordinator.address).unique_id}_stop_all"
+        self._attr_unique_id = f"{ControllerIdentity(coordinator.identity_address).unique_id}_stop_all"
 
     async def async_press(self) -> None:
         await self.coordinator.async_irrigate(None)
