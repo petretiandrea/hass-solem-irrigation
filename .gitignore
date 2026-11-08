@@ -12,3 +12,7 @@ htmlcov/
 
 .mypy_cache/
 dist/
+
+# Local BLE captures and controller backups contain private identifiers.
+/woobee-gatt.json
+/wb4-backup.json

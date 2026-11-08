@@ -109,11 +109,9 @@ rules:
       BLE connection. Rejection is retried with a new session.'
   test-coverage:
     status: done
-    comment: SBR-99 combines standalone and HA branch coverage independently on HA 2026.8.0 and 2026.10.4;
-      revalidated after merging main cc6aa14 on 2026-11-08 (55 standalone and 126 HA tests per target).
-      all 22 shipped modules measured 100% lines and branches (0/0 where no branches). CI requires >95%
-      separately per metric, rejects missing modules and enforces 100% config-flow coverage. Exact counts
-      and synthetic failure/cancellation/cleanup test evidence are in docs/quality-scale.md. No tier claimed.
+    comment: CI combines standalone and HA branch coverage for every shipped module on both HA targets.
+      The gate requires >95% lines and branches separately, rejects missing modules and requires 100%
+      config-flow coverage. docs/quality-scale.md records commands and tests; historical results are dated.
   devices:
     status: done
     comment: All 23 registry entities share the normalized controller device; registry associations remain
@@ -186,7 +184,7 @@ rules:
     comment: SBR-101 adds async_step_reconfigure with authenticated snapshot/known-serial validation, confirmation, collision recheck and update/reload. test_reconfigure.py covers errors/retry/cancel, serial absence/mismatch, repeated address changes preserving all 23 entity records/device/options and unload. Missing original serial fails closed; see docs/bluetooth-discovery.md.
   repair-issues:
     status: exempt
-    comment: No supported user credential, firmware requirement or configuration migration to repair. BLE/session failures recover on fresh reads; valve faults have no verified software remedy and battery scale is unknown. See SBR-102 review in docs/quality-scale.md.
+    comment: No supported user credential, firmware requirement or configuration migration to repair. BLE/session failures recover on fresh reads; valve faults have no verified software remedy and battery scale is unknown. See exemptions in docs/quality-scale.md.
   stale-devices:
     status: exempt
     comment: One fixed WB-4 device per entry; zones are entities, not removable child devices. Official single-device exemption applies. test_fixed_controller_entry_removal verifies online/offline entry removal cleans registry and polling.
@@ -201,7 +199,7 @@ rules:
       WooBeeConnection. The embedded client uses BLE only, with no HTTP client or web session.
   strict-typing:
     status: done
-    comment: Custom-repository evidence in docs/quality-scale.md (SBR-103); pinned strict mypy
+    comment: Custom-repository evidence in docs/quality-scale.md; pinned strict mypy
       checks all 22 adapter/client modules on Python 3.14 in CI. Merge validation against main
       953b261 retains the combined all-module coverage gate and types the reconfiguration flow.
       Typed config entries, validated

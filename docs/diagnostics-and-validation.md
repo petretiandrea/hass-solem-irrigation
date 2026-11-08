@@ -1,6 +1,6 @@
-# Diagnostics and cross-cutting validation (SBR-95)
+# Diagnostics and validation
 
-## Anonymous diagnostics
+## Download diagnostics
 
 In Home Assistant, open Settings → Devices & services → SOLEM WooBee → entry
 menu → Download diagnostics. The integration section contains only cached
@@ -22,9 +22,8 @@ Poll errors distinguish authentication rejection from transport/invalid-response
 failure; check Bluetooth reachability, connection slots and response completeness.
 The coordinator logs one outage and one recovery, without repeating each failed
 poll. Each new poll authenticates a new session. The fixed-key local BLE protocol
-has no cloud account, expiring token or user credential reauth flow. A session
-expiry is represented by failed authentication or transport timeout and tested
-with a new connection on the next poll. Command errors are surfaced to the caller;
+has no cloud account, expiring token or user credential reauth flow. Command
+errors are surfaced to the caller;
 unknown outcomes must be checked on the device before another command is sent.
 Poll and command errors explicitly chain the original client exception using
 `raise ... from exc`. Exception messages, notes, attributes and nested causes are
@@ -34,7 +33,7 @@ availability messages do not interpolate client error text. Anonymization applie
 to the downloadable diagnostics payload described above.
 
 
-## Automated evidence (all simulated)
+## Automated tests
 
 All addresses, names, nonces and frames in tests are synthetic. No live account,
 captured private payload or real controller identifier is required. Tests use
@@ -51,10 +50,10 @@ real HA setup/services/states/registries with mocked BLE/client boundaries:
 | Anonymous cached diagnostics, stale/empty/partial snapshots, no I/O | `test_diagnostics.py` |
 | Real protocol parsing, fresh handshake and cleanup over fake BLE | `tests/test_session.py`, `tests/test_client.py` |
 
-Run the validation commands in `quality-scale.md`; its per-module adapter gate
-includes diagnostics. This does not establish whole embedded-client coverage.
+Run the [quality checks](quality-scale.md); the combined coverage gate includes
+the adapter and embedded client.
 
-## Manual WB-4 validation (pending; no hardware run for SBR-95)
+## Hardware validation
 
 Use WB-4 firmware 7.0.2; do not infer other product support. Record date, tester,
 HA/Python/integration version, adapter/proxy type, firmware, expected/observed
@@ -68,7 +67,7 @@ hardware identifiers outside the published report.
    UUID and known personal labels. Confirm none occurs in the integration payload;
    record any HA envelope disclosure separately. Check logs at INFO and DEBUG.
 3. Perform the explicitly authorized, supervised zone procedure in
-   [manual-irrigation.md](manual-irrigation.md#supervised-device-verification-not-executed-by-the-agent).
+   [manual-irrigation.md](manual-irrigation.md#supervised-device-verification).
    Check every real zone, default/override duration, conditional close, global stop
    and physical timed completion. Report controller state versus physical water
    behavior separately; HA does not measure flow.
@@ -83,11 +82,6 @@ hardware identifiers outside the published report.
 6. Reload, confirm stable registry associations, unload and verify no further
    polling. End with all physical valves idle. Do not publish raw BLE backups.
 
-SBR-88 documents earlier WB-4 protocol evidence; it is not evidence that this HA
-adapter or SBR-95 procedure was tested on hardware. No SBR-95 hardware results
-are claimed. BLE range, battery impact, actual latency and physical zone behavior
-remain pending. Fill a separate report table after supervised execution:
-
-| Step | Expected | Observed | Simulated or hardware | Result/date |
-| --- | --- | --- | --- | --- |
-| 1–6 | As above | Not executed | Hardware pending | Pending |
+Hardware validation remains pending. BLE range, battery impact, command latency
+and physical valve behavior need a supervised report. Record expected and
+observed results for each step; simulated tests do not satisfy those checks.

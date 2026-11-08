@@ -1,6 +1,6 @@
-# Manual irrigation (SBR-94)
+# Manual irrigation
 
-## Platform and protocol boundary
+## Actions
 
 Each WB-4 zone is a **water valve** with OPEN and CLOSE capabilities and reported
 open/closed state. Position, opening/closing transitions and STOP-motion are not
@@ -55,8 +55,6 @@ global stop, including externally started runs; it requires no pre-read.
 There is still a race with MySOLEM or any external client between the read and
 global stop. HA's lock serializes its own commands/polling only; it cannot make
 the external protocol atomic. Avoid concurrent control from other applications.
-If independent atomic zone closure becomes a requirement, a new client/API
-capability must be established rather than hiding this limitation.
 
 ## Consistency and errors
 
@@ -82,21 +80,10 @@ retried. A normal poll or explicit refresh safely reads state and restores
 availability. Check the device before manually retrying an ambiguous command.
 HA's global stop button timestamp records an attempted press, not success.
 
-## Entity compatibility
+## Supervised device verification
 
-Four zone valves replace the start buttons in this unmerged SBR-94 PR. They use
-stable controller/zone unique IDs in the valve domain and share the physical
-controller device. Existing read-only sensor/binary-sensor IDs and the global
-stop button ID remain stable. Automations made against the earlier PR's start
-buttons must target valves and use the standard open action; custom duration
-actions must likewise target valves. HA may retain old disabled/unavailable
-registry entries from a previously installed PR version; remove those obsolete
-start-button entries manually after updating.
-
-## Supervised device verification (not executed by the agent)
-
-Only perform these actuator steps with explicit authorization, physical access
-and a safe water supply/drainage arrangement. Record model, firmware, HA version,
+Hardware validation remains pending. Perform these steps with explicit
+authorization, physical access and a safe water supply/drainage arrangement. Record model, firmware, HA version,
 latencies, reported state and physical behavior without publishing device IDs.
 
 1. Use the confirmed WB-4 firmware 7.0.2, close MySOLEM, establish HA Bluetooth
@@ -130,8 +117,9 @@ Automated evidence: `tests/integration/test_commands.py`, simulated client,
 actual HA valve actions/state/metadata, duration persistence, guarded closes,
 command failures/no retries, serialization, recovery and entity lifecycle.
 
-Sources reviewed:
+References:
+
 - https://contributors.home-assistant.io/core/entities/valve/
 - https://contributors.home-assistant.io/core/integrations/actions/
 - https://contributors.home-assistant.io/core/quality-scale/
-- Existing client protocol and README reverse-engineering evidence (SBR-88).
+- [Client protocol](client.md).
